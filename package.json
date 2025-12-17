@@ -4,6 +4,9 @@
   "description": "Download and reconstruct OpenProcessing sketches locally",
   "main": "src/index.js",
   "type": "commonjs",
+  "bin": {
+    "opdl": "bin/opdl.js"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
