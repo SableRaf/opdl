@@ -21,7 +21,7 @@ describe('codeAttributor', () => {
       expect(result).toContain('Source: https://openprocessing.org/sketch/12345');
       expect(result).toContain('License: CC BY 4.0 International');
       expect(result).toContain('Downloaded with opdl');
-      expect(result).toContain('https://github.com/nestofbirbs/openprocessing-downloader');
+      expect(result).toContain('https://github.com/sableRaf/opdl');
     });
 
     it('should handle all license types correctly', () => {
