@@ -4,13 +4,44 @@ opdl (OpenProcessing Downloader) extracts a single OpenProcessing sketch by ID, 
 
 ## Installation
 
+### As a CLI tool (recommended)
+
 ```bash
-npm install
+npm install -g opdl
 ```
 
-Add opdl to a Node.js project or install it globally if you prefer to run it as a script.
+### As a project dependency
+
+```bash
+npm install opdl
+```
 
 ## Usage
+
+### Command Line
+
+```bash
+opdl <sketchId> [--outputDir=dir] [--quiet]
+```
+
+**Examples:**
+
+```bash
+# Download sketch 2063664 to default directory (sketch_2063664)
+opdl 2063664
+
+# Download to a specific directory
+opdl 2063664 --outputDir=./my-sketch
+
+# Download quietly (suppress warnings)
+opdl 2063664 --quiet
+
+# With npx (no global install)
+npx opdl 2063664
+```
+
+
+### Programmatic API
 
 ```javascript
 const opdl = require('opdl');
@@ -67,3 +98,6 @@ sketch_{id}/
 ## Attribution
 
 All downloads preserve the original licensing information. `LICENSE` reflects Creative Commons licenses when provided, and `OPENPROCESSING.md` records metadata, tags, and library dependencies. Attribution comments at the top of each code file explain the sketch origin and link back to OpenProcessing.
+
+## Thanks
+Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api
