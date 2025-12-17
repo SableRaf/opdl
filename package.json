@@ -1,7 +1,7 @@
 {
   "name": "opdl",
-  "version": "1.0.0",
-  "description": "Download and reconstruct OpenProcessing sketches locally",
+  "version": "0.1.0",
+  "description": "Download OpenProcessing sketches locally with ease.",
   "main": "src/index.js",
   "type": "commonjs",
   "bin": {
@@ -19,8 +19,25 @@
     "p5js",
     "processing"
   ],
-  "author": "",
+  "author": "SableRaf",
   "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SableRaf/opdl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SableRaf/opdl/issues"
+  },
+  "homepage": "https://github.com/SableRaf/opdl#readme",
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "axios": "^1.7.7",
     "sanitize-filename": "^1.6.3"
