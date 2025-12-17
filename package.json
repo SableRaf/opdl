@@ -1,0 +1,33 @@
+{
+  "name": "opdl",
+  "version": "1.0.0",
+  "description": "Download and reconstruct OpenProcessing sketches locally",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "openprocessing",
+    "download",
+    "sketch",
+    "p5js",
+    "processing"
+  ],
+  "author": "",
+  "license": "GPL-2.0-or-later",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "sanitize-filename": "^1.6.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.16",
+    "nock": "^14.0.10",
+    "vitest": "^4.0.16"
+  }
+}
