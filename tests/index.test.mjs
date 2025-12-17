@@ -5,7 +5,7 @@ import nock from 'nock';
 import opdl from '../src/index.js';
 
 describe('opdl (integration)', () => {
-  const testDir = path.join(__dirname, 'test-integration-output');
+  const testDir = path.join(__dirname, 'tmp');
 
   beforeEach(() => {
     nock.cleanAll();
@@ -47,7 +47,7 @@ describe('opdl (integration)', () => {
       .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
       .reply(200, { success: false, message: 'Not found' });
 
-    const result = await opdl(sketchId, { quiet: true });
+    const result = await opdl(sketchId, { outputDir: testDir, quiet: true });
 
     expect(result.sketchInfo.error).toBeTruthy();
     expect(result.sketchInfo.error).toContain('Not found');
