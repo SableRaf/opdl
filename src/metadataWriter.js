@@ -68,7 +68,7 @@ const createOpMetadata = (sketchInfo, outputDir, options = {}) => {
   lines.push(tags.length ? tags.join(', ') : 'None');
   lines.push('');
   lines.push('---');
-  lines.push(`*Downloaded with [opdl](https://github.com/nestofbirbs/openprocessing-downloader) on ${downloadDate}*`);
+  lines.push(`*Downloaded with [opdl](https://github.com/sableRaf/opdl) on ${downloadDate}*`);
 
   const filePath = path.join(outputDir, 'OPENPROCESSING.md');
   try {

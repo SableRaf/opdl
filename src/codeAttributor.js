@@ -42,7 +42,7 @@ const buildCommentBlock = (sketchInfo) => {
   }
 
   lines.push(' * Downloaded with opdl (OpenProcessing Downloader)');
-  lines.push(' * https://github.com/nestofbirbs/openprocessing-downloader');
+  lines.push(' * https://github.com/sableRaf/opdl');
   lines.push(' */');
   lines.push('');
 

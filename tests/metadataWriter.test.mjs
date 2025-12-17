@@ -245,7 +245,7 @@ describe('metadataWriter', () => {
       const content = fs.readFileSync(path.join(testDir, 'OPENPROCESSING.md'), 'utf8');
 
       const today = new Date().toISOString().split('T')[0];
-      expect(content).toContain(`Downloaded with [opdl](https://github.com/nestofbirbs/openprocessing-downloader) on ${today}`);
+      expect(content).toContain(`Downloaded with [opdl](https://github.com/sableRaf/opdl) on ${today}`);
     });
 
     it('should respect quiet option and not throw on errors', () => {
