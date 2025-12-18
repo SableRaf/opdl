@@ -2,3 +2,14 @@ node_modules/
 dist/
 coverage/
 *.log
+sketch_*
+.DS_Store
+.vscode/
+.env
+.env.local
+.env.*.local
+thumbs.db
+.idea/
+*.iml
+out/
+build/
