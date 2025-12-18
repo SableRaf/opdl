@@ -38,7 +38,7 @@ async function handleSketchCommand(args) {
       downloadAssets: !args.options.skipAssets,
       downloadThumbnail: args.options.downloadThumbnail !== false,
       saveMetadata: args.options.saveMetadata !== false,
-      addSourceComments: !args.options.skipCode,
+      addSourceComments: args.options.addSourceComments !== false,
       createLicenseFile: true,
       createOpMetadata: true,
       quiet: args.options.quiet || false,
