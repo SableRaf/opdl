@@ -1,4 +1,4 @@
-const { spawn, exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -7,23 +7,38 @@ const path = require('path');
  * @param {string} url - URL to open
  */
 function openBrowser(url) {
-  const platform = process.platform;
-  let command;
-
-  if (platform === 'darwin') {
-    command = `open ${url}`;
-  } else if (platform === 'win32') {
-    command = `start ${url}`;
-  } else {
-    // Linux and other Unix-like systems
-    command = `xdg-open ${url}`;
+  let parsedUrl;
+  try {
+    // Validate URL to guard against arbitrary command fragments
+    parsedUrl = new URL(url);
+  } catch {
+    return;
   }
 
-  exec(command, (error) => {
-    if (error) {
-      // Silently fail - browser opening is a nice-to-have feature
-      // The user can still manually open the URL
-    }
+  const platform = process.platform;
+  let command;
+  let args;
+
+  if (platform === 'darwin') {
+    command = 'open';
+    args = [parsedUrl.toString()];
+  } else if (platform === 'win32') {
+    command = 'cmd';
+    args = ['/c', 'start', '', parsedUrl.toString()];
+  } else {
+    // Linux and other Unix-like systems
+    command = 'xdg-open';
+    args = [parsedUrl.toString()];
+  }
+
+  const child = spawn(command, args, {
+    stdio: 'ignore',
+    detached: true,
+  });
+
+  child.on('error', () => {
+    // Silently fail - browser opening is a nice-to-have feature
+    // The user can still manually open the URL
   });
 }
 
