@@ -11,9 +11,14 @@ import { fieldRegistry } from '../src/fieldRegistry';
 
 // Helper to get actual fields from API response
 function getFieldsFromResponse(data) {
-  if (Array.isArray(data) && data.length > 0) {
+  if (Array.isArray(data)) {
+    // Explicitly handle empty arrays so tests fail with a clear message
+    if (data.length === 0) {
+      throw new Error('API returned an empty array; cannot infer fields from an empty response. Use a different test ID or increase the limit.');
+    }
     return Object.keys(data[0]).sort();
   }
+
   return Object.keys(data).sort();
 }
 
