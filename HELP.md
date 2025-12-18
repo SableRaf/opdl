@@ -557,11 +557,19 @@ Use `opdl fields <fieldSet>` to see all available fields for a specific entity t
    - Use `opdl fields sketch` to see all available fields
    - Includes fields like: `license`, `libraries`, `tags`, `isDraft`, `parentID`, etc.
 
-2. **List endpoints** (`/api/user/:id/sketches`, `/api/curation/:id/sketches`) - Return limited fields for performance
-   - Accessed via: `opdl user sketches <userId>` or `opdl curation sketches <curationId>`
-   - Use `opdl fields user.sketches` or `opdl fields curation.sketches` to see available fields
-   - Only includes basic fields: `visualID`, `title`, `description`, `instructions`, `createdOn`, `mode`
-   - Does not include: `license`, `libraries`, `tags`, or other detailed metadata
+2. **List endpoints** - Return limited fields for performance
+
+   **User sketches** (`/api/user/:id/sketches`):
+   - Accessed via: `opdl user sketches <userId>`
+   - Use `opdl fields user.sketches` to see available fields
+   - Includes basic fields: `visualID`, `title`, `description`, `instructions`, `createdOn`, `mode`
+
+   **Curation sketches** (`/api/curation/:id/sketches`):
+   - Accessed via: `opdl curation sketches <curationId>`
+   - Use `opdl fields curation.sketches` to see available fields
+   - Includes more fields than user.sketches: `visualID`, `title`, `description`, `instructions`, `createdOn`, `submittedOn`, `mode`, `userID`, `fullname`, `membershipType`, `parentID`, `status`
+
+   Both list endpoints do not include: `license`, `libraries`, `tags`, or other detailed metadata
 
 **To get full details for sketches in a list:**
 ```bash
@@ -593,7 +601,7 @@ When using `opdl sketch info <sketchId>` or `opdl <sketchId> --info`:
 
 **Note:** The OpenProcessing API does not expose `hearts` or `views` counts in sketch metadata.
 
-When using `opdl user sketches <userId>` or `opdl curation sketches <curationId>`:
+When using `opdl user sketches <userId>`:
 - `visualID` - Sketch ID
 - `title` - Sketch title
 - `description` - Sketch description
@@ -601,7 +609,21 @@ When using `opdl user sketches <userId>` or `opdl curation sketches <curationId>
 - `createdOn` - Creation date
 - `mode` - Sketch mode (p5js, processing, etc.)
 
-These list endpoints return limited fields. Use `opdl fields user.sketches` or `opdl fields curation.sketches` for complete field listings.
+When using `opdl curation sketches <curationId>` (includes author info):
+- `visualID` - Sketch ID
+- `title` - Sketch title
+- `description` - Sketch description
+- `instructions` - Usage instructions
+- `createdOn` - Creation date
+- `submittedOn` - Submission date
+- `mode` - Sketch mode (p5js, processing, etc.)
+- `userID` - Author user ID
+- `fullname` - Author full name
+- `membershipType` - Author membership type
+- `parentID` - Parent sketch ID (if forked)
+- `status` - Sketch status
+
+Use `opdl fields user.sketches` or `opdl fields curation.sketches` for complete field listings.
 
 ### Common User Fields
 
