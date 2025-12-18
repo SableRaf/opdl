@@ -151,7 +151,7 @@ fieldRegistry.register({
     { name: 'description', description: 'Sketch description', type: 'string' },
     { name: 'instructions', description: 'Usage instructions', type: 'string' },
     { name: 'createdOn', description: 'Creation date', type: 'date' },
-    { name: 'mode', description: 'Sketch mode (p5.js, processing, etc.)', type: 'string' },
+    { name: 'mode', description: 'Sketch mode (p5js, processingjs, html, applet)', type: 'string' },
   ],
 });
 
