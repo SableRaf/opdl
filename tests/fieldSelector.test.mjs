@@ -108,6 +108,16 @@ describe('Field Selector', () => {
       expect(result).toEqual(data);
     });
 
+    it('should handle empty array with "all" keyword and unregistered field set', () => {
+      const result = selectFields([], {
+        fields: 'all',
+        fieldSetName: 'unknown'
+      });
+
+      // Should return empty array without crashing
+      expect(result).toEqual([]);
+    });
+
     it('should ignore non-existent fields', () => {
       const data = {
         visualID: 1142958,

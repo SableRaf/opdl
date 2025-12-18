@@ -15,7 +15,7 @@ function selectFields(data, options) {
     const fieldSet = fieldRegistry.get(options.fieldSetName);
     fieldList = fieldSet
       ? fieldSet.fields.map(f => f.name)
-      : Object.keys(Array.isArray(data) ? data[0] : data);
+      : Object.keys(Array.isArray(data) && data.length > 0 ? data[0] : data);
   } else if (typeof options.fields === 'string') {
     fieldList = options.fields.split(',').map(f => f.trim());
   } else {
