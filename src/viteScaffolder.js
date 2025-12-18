@@ -3,6 +3,15 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 /**
+ * Escape special characters in a string so it can be used safely in a RegExp
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Scaffolds a Vite project in the specified output directory
  * @param {string} outputDir - Directory containing the downloaded sketch
  * @param {Object} sketchInfo - Sketch metadata and information
@@ -280,14 +289,16 @@ function updateHtmlModeFilePaths(indexHtmlPath, movedCodeFiles, outputDir) {
   // Update script src paths for files that were moved to src/
   for (const fileName of movedCodeFiles) {
     // Match variations: src="file.js", src='file.js', src = "file.js", etc.
-    const srcRegex = new RegExp(`(src\\s*=\\s*["'])${fileName}(["'])`, 'g');
+    const escName = escapeRegExp(fileName);
+    const srcRegex = new RegExp(`(src\\s*=\\s*["'])${escName}(["'])`, 'g');
     htmlContent = htmlContent.replace(srcRegex, `$1/src/${fileName}$2`);
   }
 
   // Update link href paths for CSS files in src/
   for (const fileName of movedCodeFiles) {
     if (fileName.endsWith('.css')) {
-      const hrefRegex = new RegExp(`(href\\s*=\\s*["'])${fileName}(["'])`, 'g');
+      const escName = escapeRegExp(fileName);
+      const hrefRegex = new RegExp(`(href\\s*=\\s*["'])${escName}(["'])`, 'g');
       htmlContent = htmlContent.replace(hrefRegex, `$1/src/${fileName}$2`);
     }
   }
@@ -296,8 +307,9 @@ function updateHtmlModeFilePaths(indexHtmlPath, movedCodeFiles, outputDir) {
   for (const fileName of publicFiles) {
     // For assets, we reference them directly from root (Vite serves public/ at root)
     // But if they're referenced with a path, update it
-    const srcRegex = new RegExp(`(src\\s*=\\s*["'])${fileName}(["'])`, 'g');
-    const hrefRegex = new RegExp(`(href\\s*=\\s*["'])${fileName}(["'])`, 'g');
+    const escName = escapeRegExp(fileName);
+    const srcRegex = new RegExp(`(src\\s*=\\s*["'])${escName}(["'])`, 'g');
+    const hrefRegex = new RegExp(`(href\\s*=\\s*["'])${escName}(["'])`, 'g');
 
     // Assets in public/ are served from root, so just /filename
     htmlContent = htmlContent.replace(srcRegex, `$1/${fileName}$2`);
