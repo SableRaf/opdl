@@ -129,7 +129,16 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     await scaffoldViteProject(outputDir, sketchInfo, {
       codeFiles: savedCodeFiles,
       quiet: finalOptions.quiet,
+      run: finalOptions.run,
     });
+  } else if (finalOptions.run) {
+    // Print success message before starting server (since server will block)
+    if (!finalOptions.quiet) {
+      console.log(`Sketch downloaded to: ${outputDir}`);
+    }
+    // Run simple HTTP server for non-Vite projects
+    const { runDevServer } = require('./serverRunner');
+    await runDevServer(outputDir, { vite: false, quiet: finalOptions.quiet });
   }
 
   return { outputDir, metadataDir, codeFiles: savedCodeFiles };

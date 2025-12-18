@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { runDevServer } = require('./serverRunner');
 
 /**
  * Escape special characters in a string so it can be used safely in a RegExp
@@ -18,9 +19,10 @@ function escapeRegExp(str) {
  * @param {Object} options - Scaffolding options
  * @param {Array} options.codeFiles - Array of saved code file paths
  * @param {boolean} options.quiet - Suppress output messages
+ * @param {boolean} options.run - Automatically run dev server after setup
  */
 async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
-  const { codeFiles = [], quiet = false } = options;
+  const { codeFiles = [], quiet = false, run = false } = options;
 
   // Check Node version - Vite 6 requires Node 20+
   const nodeVersion = process.version;
@@ -158,10 +160,18 @@ async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
       console.log('opdl: Installing Vite dependencies...');
       await runNpmInstall(outputDir, quiet);
       console.log('opdl: Vite project setup complete!');
-      console.log(`opdl: Run 'cd ${path.basename(outputDir)} && npm run dev' to start the development server.`);
+
+      if (!run) {
+        console.log(`opdl: Run 'cd ${path.basename(outputDir)} && npm run dev' to start the development server.`);
+      }
     } else {
       // In quiet mode, still create the project structure but skip npm install
       console.log('opdl: Vite project structure created. Run "npm install" to install dependencies.');
+    }
+
+    // Run dev server if --run flag is set
+    if (run && !quiet) {
+      await runDevServer(outputDir, { vite: true, quiet });
     }
   } catch (error) {
     if (!quiet) {

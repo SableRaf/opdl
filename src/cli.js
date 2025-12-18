@@ -24,6 +24,7 @@
  * @property {boolean} [options.createLicenseFile] - Create license file
  * @property {boolean} [options.createOpMetadata] - Create OP metadata file
  * @property {boolean} [options.vite] - Set up Vite project structure
+ * @property {boolean} [options.run] - Automatically run dev server after scaffolding
  */
 
 /**
@@ -154,6 +155,7 @@ function parseOptions(args) {
     else if (arg === '--createOpMetadata') options.createOpMetadata = true;
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
     else if (arg === '--vite') options.vite = true;
+    else if (arg === '--run') options.run = true;
     // Value flags with = syntax
     else if (arg.startsWith('--info=')) {
       options.info = arg.split('=')[1];

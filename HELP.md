@@ -412,6 +412,30 @@ opdl sketch download 1142958 --vite --outputDir ./projects
 
 After setup, run `npm run dev` in the sketch directory to start the development server.
 
+#### `--run`
+
+Automatically start a development server after downloading the sketch and open it in your default browser.
+
+**Behavior:**
+- If used with `--vite`, starts the Vite development server (`npm run dev`)
+- If used without `--vite`, starts a simple HTTP server on port 3000
+- Automatically opens the sketch in your default browser
+- The server will run indefinitely until you press Ctrl+C to stop it
+
+**Example:**
+```bash
+# Download and run with simple HTTP server
+opdl 1142958 --run
+
+# Download with Vite setup and run Vite dev server
+opdl 1142958 --vite --run
+
+# Download to specific directory and run
+opdl 1142958 --outputDir ./my-project --run
+```
+
+**Note:** When using `--run`, the command will not exit until you stop the server with Ctrl+C.
+
 ## Examples
 
 ### Field Discovery Workflow
@@ -455,6 +479,9 @@ opdl 1142958 --outputDir ./my-projects
 # Download with thumbnail and metadata
 opdl 1142958 --downloadThumbnail --saveMetadata
 
+# Download and automatically run a dev server
+opdl 1142958 --run
+
 # Download multiple sketches (using shell loop)
 for id in 1142958 1142959 1142960; do
   opdl $id --outputDir ./sketches
@@ -473,7 +500,10 @@ opdl 1142958 --vite --outputDir ./projects
 # Download with Vite in quiet mode (skip npm install)
 opdl 1142958 --vite --quiet
 
-# After download, start development server
+# Download with Vite and automatically start dev server
+opdl 1142958 --vite --run
+
+# After download (without --run), start development server manually
 cd sketch_1142958
 npm run dev
 
