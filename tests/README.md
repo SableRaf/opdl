@@ -15,12 +15,12 @@ npm run test:watch
 npm run test:coverage
 
 # Run specific test file
-npm test -- tests/validate-fields.test.js
+npm test -- tests/validate-fields.test.mjs
 ```
 
 ## Field Validation Tests
 
-The `validate-fields.test.js` file contains comprehensive tests that validate all field registries against the live OpenProcessing API.
+The `validate-fields.test.mjs` file contains comprehensive tests that validate all field registries against the live OpenProcessing API.
 
 ### Purpose
 
@@ -32,7 +32,7 @@ These tests ensure that:
 ### Running Field Validation
 
 ```bash
-npm test -- tests/validate-fields.test.js
+npm test -- tests/validate-fields.test.mjs
 ```
 
 The tests will:
