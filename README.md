@@ -12,16 +12,24 @@ npx opdl 2063664
 
 ## Installation
 
-### As a CLI tool (recommended)
-
+With npm:
 ```bash
 npm install -g opdl
 ```
 
-### As a project dependency
-
+With yarn:
 ```bash
-npm install opdl
+yarn global add opdl
+```
+
+With pnpm:
+```bash
+pnpm add -g opdl
+```
+
+With bun:
+```bash
+bun install -g opdl
 ```
 
 ## Usage
