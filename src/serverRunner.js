@@ -143,6 +143,7 @@ function runSimpleHttpServer(outputDir, quiet, overrides = {}) {
       '.htm': 'text/html',
       '.js': 'application/javascript',
       '.css': 'text/css',
+      '.glsl': 'text/plain',
       '.json': 'application/json',
       '.png': 'image/png',
       '.jpg': 'image/jpeg',
