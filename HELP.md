@@ -47,6 +47,9 @@ npx opdl <command>
 ## Quick Start
 
 ```bash
+# Check version
+opdl --version
+
 # Download a sketch
 opdl 1142958
 
@@ -64,6 +67,26 @@ opdl user 12345 --json
 ```
 
 ## Commands
+
+### General Commands
+
+#### Display version
+
+```bash
+opdl --version
+opdl -v
+```
+
+Shows the current version of opdl.
+
+#### Display help
+
+```bash
+opdl --help
+opdl -h
+```
+
+Shows usage information and available commands.
 
 ### Field Discovery
 

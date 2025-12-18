@@ -35,6 +35,9 @@ opdl <sketchId> [--outputDir=dir] [--quiet]
 **Examples:**
 
 ```bash
+# Check version
+opdl --version
+
 # Download sketch 2063664 to default directory (sketch_2063664)
 opdl 2063664
 

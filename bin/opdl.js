@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const path = require('path');
+const { version } = require(path.join(__dirname, '..', 'package.json'));
 const { parseArgs } = require(path.join(__dirname, '..', 'src', 'cli.js'));
 const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'fields.js'));
 const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'sketch.js'));
@@ -12,6 +13,12 @@ const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'com
  */
 async function main() {
   const argv = process.argv.slice(2);
+
+  // Handle version flag
+  if (argv.includes('--version') || argv.includes('-v')) {
+    console.log(version);
+    process.exit(0);
+  }
 
   // Handle help flag
   if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
@@ -75,6 +82,8 @@ opdl - OpenProcessing Downloader CLI
 
 USAGE:
   opdl <command> [options]
+  opdl --version                        Display version number
+  opdl --help                           Display this help message
 
 COMMANDS:
 
