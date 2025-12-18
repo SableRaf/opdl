@@ -360,6 +360,29 @@ Skip downloading asset files (images, data files, etc.).
 opdl 1142958 --skipAssets
 ```
 
+#### `--vite`
+
+Set up a Vite project structure for modern web development.
+
+This will:
+- Create a `package.json` with Vite as a dependency
+- Create a `vite.config.js` configuration file
+- Move code files to a `src/` directory
+- Move assets to a `public/` directory
+- Update `index.html` to work with Vite's module system
+- Install dependencies automatically (unless `--quiet` is set)
+
+**Requirements:**
+- Node.js 20 or higher (required by Vite 6)
+
+**Example:**
+```bash
+opdl 1142958 --vite
+opdl sketch download 1142958 --vite --outputDir ./projects
+```
+
+After setup, run `npm run dev` in the sketch directory to start the development server.
+
 ## Examples
 
 ### Field Discovery Workflow
@@ -407,6 +430,26 @@ opdl 1142958 --downloadThumbnail --saveMetadata
 for id in 1142958 1142959 1142960; do
   opdl $id --outputDir ./sketches
 done
+```
+
+### Vite Project Setup
+
+```bash
+# Download sketch with Vite project structure
+opdl 1142958 --vite
+
+# Download to specific directory with Vite
+opdl 1142958 --vite --outputDir ./projects
+
+# Download with Vite in quiet mode (skip npm install)
+opdl 1142958 --vite --quiet
+
+# After download, start development server
+cd sketch_1142958
+npm run dev
+
+# Build for production
+npm run build
 ```
 
 ### Working with Users

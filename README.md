@@ -85,6 +85,7 @@ const opdl = require('opdl');
 | `addSourceComments` | `true` | Prepends attribution comments to each shipped code file. |
 | `createLicenseFile` | `true` | Generates a `LICENSE` file derived from the sketch license. |
 | `createOpMetadata` | `true` | Produces `OPENPROCESSING.md` with title, description, assets, and tags. |
+| `vite` | `false` | Set up a Vite project structure for modern web development. |
 | `quiet` | `false` | Silence console warnings (errors still surface via the return object). |
 
 ## Output Structure
