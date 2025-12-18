@@ -17,34 +17,91 @@ const getLicenseDisplay = (licenseCode) => {
   return LICENSE_NAMES[licenseCode] || licenseCode;
 };
 
-const buildCommentBlock = (sketchInfo) => {
+const buildCommentBlock = (sketchInfo, fileExtension = '') => {
   const title = sketchInfo.title || sketchInfo.metadata?.title || 'Untitled';
   const author = sketchInfo.author || sketchInfo.metadata?.fullname || 'Unknown';
   const licenseDisplay = getLicenseDisplay(sketchInfo.metadata?.license);
   const sourceUrl = `https://openprocessing.org/sketch/${sketchInfo.sketchId}`;
 
-  const lines = [
-    '/*',
-    ` * Title: ${title}`,
-    ` * Author: ${author}`,
-    ` * Source: ${sourceUrl}`,
-    ` * License: ${licenseDisplay}`,
-    ' *',
-  ];
+  // Determine comment style based on file extension
+  const isHtml = fileExtension === '.html' || fileExtension === '.htm';
+  const isPython = fileExtension === '.py';
+  const isShell = fileExtension === '.sh' || fileExtension === '.bash';
 
-  if (sketchInfo.isFork && sketchInfo.parent?.sketchID) {
-    const parentTitle = sketchInfo.parent.title || 'Unknown title';
-    const parentAuthor = sketchInfo.parent.author || 'Unknown author';
-    const parentUrl = `https://openprocessing.org/sketch/${sketchInfo.parent.sketchID}`;
-    lines.push(` * Forked from: ${parentTitle} by ${parentAuthor}`);
-    lines.push(` * Fork source: ${parentUrl}`);
-    lines.push(' *');
+  let lines;
+
+  if (isHtml) {
+    // HTML comments
+    lines = [
+      '<!--',
+      `  Title: ${title}`,
+      `  Author: ${author}`,
+      `  Source: ${sourceUrl}`,
+      `  License: ${licenseDisplay}`,
+      '',
+    ];
+
+    if (sketchInfo.isFork && sketchInfo.parent?.sketchID) {
+      const parentTitle = sketchInfo.parent.title || 'Unknown title';
+      const parentAuthor = sketchInfo.parent.author || 'Unknown author';
+      const parentUrl = `https://openprocessing.org/sketch/${sketchInfo.parent.sketchID}`;
+      lines.push(`  Forked from: ${parentTitle} by ${parentAuthor}`);
+      lines.push(`  Fork source: ${parentUrl}`);
+      lines.push('');
+    }
+
+    lines.push('  Downloaded with opdl (OpenProcessing Downloader)');
+    lines.push('  https://github.com/sableRaf/opdl');
+    lines.push('-->');
+    lines.push('');
+  } else if (isPython || isShell) {
+    // Python/Shell hash comments
+    lines = [
+      '#',
+      `# Title: ${title}`,
+      `# Author: ${author}`,
+      `# Source: ${sourceUrl}`,
+      `# License: ${licenseDisplay}`,
+      '#',
+    ];
+
+    if (sketchInfo.isFork && sketchInfo.parent?.sketchID) {
+      const parentTitle = sketchInfo.parent.title || 'Unknown title';
+      const parentAuthor = sketchInfo.parent.author || 'Unknown author';
+      const parentUrl = `https://openprocessing.org/sketch/${sketchInfo.parent.sketchID}`;
+      lines.push(`# Forked from: ${parentTitle} by ${parentAuthor}`);
+      lines.push(`# Fork source: ${parentUrl}`);
+      lines.push('#');
+    }
+
+    lines.push('# Downloaded with opdl (OpenProcessing Downloader)');
+    lines.push('# https://github.com/sableRaf/opdl');
+    lines.push('');
+  } else {
+    // C-style comments (default for JS, CSS, Java, C++, etc.)
+    lines = [
+      '/*',
+      ` * Title: ${title}`,
+      ` * Author: ${author}`,
+      ` * Source: ${sourceUrl}`,
+      ` * License: ${licenseDisplay}`,
+      ' *',
+    ];
+
+    if (sketchInfo.isFork && sketchInfo.parent?.sketchID) {
+      const parentTitle = sketchInfo.parent.title || 'Unknown title';
+      const parentAuthor = sketchInfo.parent.author || 'Unknown author';
+      const parentUrl = `https://openprocessing.org/sketch/${sketchInfo.parent.sketchID}`;
+      lines.push(` * Forked from: ${parentTitle} by ${parentAuthor}`);
+      lines.push(` * Fork source: ${parentUrl}`);
+      lines.push(' *');
+    }
+
+    lines.push(' * Downloaded with opdl (OpenProcessing Downloader)');
+    lines.push(' * https://github.com/sableRaf/opdl');
+    lines.push(' */');
+    lines.push('');
   }
-
-  lines.push(' * Downloaded with opdl (OpenProcessing Downloader)');
-  lines.push(' * https://github.com/sableRaf/opdl');
-  lines.push(' */');
-  lines.push('');
 
   return lines.join('\n');
 };
@@ -55,7 +112,6 @@ const addSourceComments = (sketchInfo, codeFilePaths = [], options = {}) => {
     return;
   }
 
-  const commentBlock = buildCommentBlock(sketchInfo);
   for (const targetPath of codeFilePaths) {
     try {
       const normalizedPath = path.resolve(targetPath);
@@ -63,6 +119,8 @@ const addSourceComments = (sketchInfo, codeFilePaths = [], options = {}) => {
       if (content.includes('Downloaded with opdl')) {
         continue;
       }
+      const fileExtension = path.extname(normalizedPath);
+      const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
       fs.writeFileSync(normalizedPath, `${commentBlock}${content.startsWith('\n') ? '' : '\n'}${content}`, 'utf8');
     } catch (error) {
       if (!quiet) {

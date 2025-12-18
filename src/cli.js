@@ -23,6 +23,7 @@
  * @property {boolean} [options.addSourceComments] - Add source attribution comments
  * @property {boolean} [options.createLicenseFile] - Create license file
  * @property {boolean} [options.createOpMetadata] - Create OP metadata file
+ * @property {boolean} [options.vite] - Set up Vite project structure
  */
 
 /**
@@ -152,6 +153,7 @@ function parseOptions(args) {
     else if (arg === '--skipLicense') options.createLicenseFile = false;
     else if (arg === '--createOpMetadata') options.createOpMetadata = true;
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
+    else if (arg === '--vite') options.vite = true;
     // Value flags with = syntax
     else if (arg.startsWith('--info=')) {
       options.info = arg.split('=')[1];

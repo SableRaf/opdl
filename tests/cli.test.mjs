@@ -250,6 +250,18 @@ describe('CLI Parser', () => {
       expect(options.createOpMetadata).toBe(false);
     });
 
+    it('should parse --vite flag', () => {
+      const options = parseOptions(['--vite']);
+      expect(options.vite).toBe(true);
+    });
+
+    it('should parse --vite flag with other options', () => {
+      const options = parseOptions(['--vite', '--quiet', '--outputDir=./projects']);
+      expect(options.vite).toBe(true);
+      expect(options.quiet).toBe(true);
+      expect(options.outputDir).toBe('./projects');
+    });
+
     it('should return empty object for no options', () => {
       const options = parseOptions([]);
       expect(options).toEqual({});

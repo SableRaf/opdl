@@ -170,5 +170,102 @@ describe('codeAttributor', () => {
         line === '' || line.startsWith('/*') || line.startsWith(' *') || line.startsWith(' */') || line === '*/'
       )).toBe(true);
     });
+
+    it('should generate HTML-style comments for .html files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.html');
+
+      expect(result).toMatch(/^<!--/);
+      expect(result.trim()).toMatch(/-->$/);
+      expect(result).toContain('Title: Test');
+      expect(result).toContain('Author: Author');
+      expect(result).toContain('Downloaded with opdl');
+    });
+
+    it('should generate HTML-style comments for .htm files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.htm');
+
+      expect(result).toMatch(/^<!--/);
+      expect(result.trim()).toMatch(/-->$/);
+    });
+
+    it('should generate Python-style comments for .py files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.py');
+
+      expect(result).toMatch(/^#/);
+      expect(result).toContain('# Title: Test');
+      expect(result).toContain('# Author: Author');
+      expect(result).toContain('# Downloaded with opdl');
+      expect(result.split('\n').filter(l => l).every(line => line.startsWith('#'))).toBe(true);
+    });
+
+    it('should generate shell-style comments for .sh files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.sh');
+
+      expect(result).toMatch(/^#/);
+      expect(result).toContain('# Title: Test');
+      expect(result.split('\n').filter(l => l).every(line => line.startsWith('#'))).toBe(true);
+    });
+
+    it('should default to C-style comments for unknown extensions', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.xyz');
+
+      expect(result).toMatch(/^\/\*/);
+      expect(result.trim()).toMatch(/\*\/$/);
+    });
+
+    it('should use C-style comments for CSS files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.css');
+
+      expect(result).toMatch(/^\/\*/);
+      expect(result.trim()).toMatch(/\*\/$/);
+    });
   });
 });

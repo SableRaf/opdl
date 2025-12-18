@@ -42,6 +42,7 @@ async function handleSketchCommand(args) {
       createLicenseFile: true,
       createOpMetadata: true,
       quiet: args.options.quiet || false,
+      vite: args.options.vite || false,
     };
 
     const result = await opdl(sketchId, downloadOptions);
