@@ -55,6 +55,12 @@ opdl 2063664 --outputDir=./my-sketch
 # Download quietly (suppress warnings)
 opdl 2063664 --quiet
 
+# Download and automatically run a dev server
+opdl 2063664 --run
+
+# Download with Vite setup and run the dev server
+opdl 2063664 --vite --run
+
 # With npx (no global install)
 npx opdl 2063664
 ```
@@ -97,6 +103,7 @@ const opdl = require('opdl');
 | `createLicenseFile` | `true` | Generates a `LICENSE` file derived from the sketch license. |
 | `createOpMetadata` | `true` | Produces `OPENPROCESSING.md` with title, description, assets, and tags. |
 | `vite` | `false` | Set up a Vite project structure for modern web development. |
+| `run` | `false` | Automatically run a dev server after download and open it in your browser. Uses Vite dev server if `--vite` is set, otherwise uses a simple HTTP server. |
 | `quiet` | `false` | Silence console warnings (errors still surface via the return object). |
 
 ## Output Structure

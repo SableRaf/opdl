@@ -125,6 +125,7 @@ OPTIONS:
     --saveMetadata         Save metadata JSON file
     --skipAssets           Skip downloading asset files
     --vite                 Set up Vite project structure
+    --run                  Automatically run dev server after download
 
 EXAMPLES:
 
@@ -138,6 +139,8 @@ EXAMPLES:
   opdl sketch download 1142958 --outputDir=./projects
   opdl 1142958 --outputDir=./projects --downloadThumbnail
   opdl 1142958 --vite
+  opdl 1142958 --vite --run
+  opdl 1142958 --run
 
   # User operations
   opdl user 1 --info fullname,website,memberSince

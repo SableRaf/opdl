@@ -43,6 +43,7 @@ async function handleSketchCommand(args) {
       createOpMetadata: true,
       quiet: args.options.quiet || false,
       vite: args.options.vite || false,
+      run: args.options.run || false,
     };
 
     const result = await opdl(sketchId, downloadOptions);
@@ -51,7 +52,8 @@ async function handleSketchCommand(args) {
       throw new Error(result.sketchInfo.error || 'Failed to download sketch');
     }
 
-    if (!args.options.quiet) {
+    // Print success message before starting server (since server blocks)
+    if (!args.options.quiet && !args.options.run) {
       console.log(`Sketch downloaded to: ${result.outputPath}`);
     }
   }

@@ -262,6 +262,24 @@ describe('CLI Parser', () => {
       expect(options.outputDir).toBe('./projects');
     });
 
+    it('should parse --run flag', () => {
+      const options = parseOptions(['--run']);
+      expect(options.run).toBe(true);
+    });
+
+    it('should parse --run flag with --vite', () => {
+      const options = parseOptions(['--vite', '--run']);
+      expect(options.vite).toBe(true);
+      expect(options.run).toBe(true);
+    });
+
+    it('should parse --run flag with other download options', () => {
+      const options = parseOptions(['--run', '--outputDir=./projects', '--quiet']);
+      expect(options.run).toBe(true);
+      expect(options.outputDir).toBe('./projects');
+      expect(options.quiet).toBe(true);
+    });
+
     it('should return empty object for no options', () => {
       const options = parseOptions([]);
       expect(options).toEqual({});
