@@ -1,6 +1,6 @@
 {
   "name": "opdl",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Download OpenProcessing sketches locally with ease.",
   "main": "src/index.js",
   "type": "commonjs",
