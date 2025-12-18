@@ -332,7 +332,7 @@ describe('Field Registry Validation', () => {
         return;
       }
 
-      const validMembershipTypes = [0, 1, 2];
+      const validMembershipTypes = [0, 1, 2, 3];
       const invalidValues = testSketches
         .map(s => s.membershipType)
         .filter(mt => mt !== null && !validMembershipTypes.includes(mt));
