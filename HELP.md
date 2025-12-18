@@ -567,7 +567,7 @@ Use `opdl fields <fieldSet>` to see all available fields for a specific entity t
    **Curation sketches** (`/api/curation/:id/sketches`):
    - Accessed via: `opdl curation sketches <curationId>`
    - Use `opdl fields curation.sketches` to see available fields
-   - Includes more fields than user.sketches: `visualID`, `title`, `description`, `instructions`, `createdOn`, `submittedOn`, `mode`, `userID`, `fullname`, `membershipType`, `parentID`, `status`
+   - Includes more fields than user.sketches: `visualID`, `title`, `description`, `instructions`, `createdOn`, `submittedOn`, `mode`, `userID`, `fullname`, `membershipType`, `parentID`, `status`, `thumbnailUpdatedOn`, `videoUpdatedOn`
 
    Both list endpoints do not include: `license`, `libraries`, `tags`, or other detailed metadata
 
@@ -592,7 +592,7 @@ When using `opdl sketch info <sketchId>` or `opdl <sketchId> --info`:
 - `libraries` - Libraries used (p5.js, p5.sound, etc.)
 - `createdOn` - Creation date
 - `updatedOn` - Last modification date
-- `mode` - Sketch mode (p5.js, processing, etc.)
+- `mode` - Sketch mode (p5js, processingjs, html, applet)
 - `userID` - Author's user ID
 - `parentID` - Parent sketch ID (if forked)
 - `isDraft` - Whether sketch is a draft
@@ -622,6 +622,8 @@ When using `opdl curation sketches <curationId>` (includes author info):
 - `membershipType` - Author membership type
 - `parentID` - Parent sketch ID (if forked)
 - `status` - Sketch status
+- `thumbnailUpdatedOn` - Thumbnail update date
+- `videoUpdatedOn` - Video update date
 
 Use `opdl fields user.sketches` or `opdl fields curation.sketches` for complete field listings.
 
