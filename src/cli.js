@@ -63,7 +63,7 @@ function parseArgs(argv) {
     const possibleSubcommands = ['sketches', 'followers', 'following'];
     let subcommand = null;
     let id = null;
-    let optionsStart = 1;
+    let optionsStart = null;
 
     if (possibleSubcommands.includes(argv[1])) {
       subcommand = argv[1];
