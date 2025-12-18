@@ -22,7 +22,9 @@ Complete command reference and documentation for opdl.
 
 ## Overview
 
-`opdl` is a command-line tool for downloading and exploring OpenProcessing sketches, users, and curations. It supports:
+`opdl` is a command-line tool for downloading OpenProcessing sketches, and exploring the OpenProcessing API. It allows you to query information about sketches, users, and curations. 
+
+It supports:
 
 - Downloading complete sketches with all assets
 - Querying metadata for sketches, users, and curations
@@ -170,7 +172,7 @@ opdl user <userId> [options]
 **Example:**
 ```bash
 opdl user 1
-opdl user 1 --info fullname,website,memberSince
+opdl user 1 --info fullname,website,createdOn
 opdl user 1 --json
 ```
 
@@ -184,9 +186,11 @@ opdl user sketches <userId> [options]
 ```bash
 opdl user sketches 1
 opdl user sketches 1 --limit 10
-opdl user sketches 1 --info visualID,title,hearts
+opdl user sketches 1 --info visualID,title,createdOn
 opdl user sketches 1 --json
 ```
+
+**Note:** The user sketches list endpoint returns limited fields. Use `opdl fields user.sketches` to see available fields. For full sketch details including license and other metadata, fetch each sketch individually with `opdl sketch info <sketchId>`.
 
 #### List user's followers
 
@@ -244,6 +248,8 @@ opdl curation sketches 12 --sort desc
 opdl curation sketches 12 --json
 ```
 
+**Note:** Like user sketches, the curation sketches list endpoint returns limited fields. Use `opdl fields curation.sketches` to see available fields.
+
 ## Options
 
 ### Output Control
@@ -260,7 +266,7 @@ Select specific fields to display. Can be:
 ```bash
 opdl 1142958 --info title,license
 opdl user 1 --info fullname,website,location
-opdl user sketches 1 --info visualID,title,hearts
+opdl user sketches 1 --info visualID,title,createdOn
 ```
 
 #### `--json`
@@ -405,7 +411,7 @@ opdl fields user.sketches
 opdl sketch info 1142958
 
 # Get specific fields
-opdl 1142958 --info title,license,hearts,views
+opdl 1142958 --info title,license,tags,updatedOn
 
 # Get all fields as JSON
 opdl sketch info 1142958 --info all --json
@@ -459,7 +465,7 @@ npm run build
 opdl user 1
 
 # Get specific user fields
-opdl user 1 --info fullname,website,location,memberSince
+opdl user 1 --info fullname,website,location,createdOn
 
 # List user's recent sketches
 opdl user sketches 1 --limit 10 --sort desc
@@ -471,7 +477,7 @@ opdl user sketches 1 --info visualID,title
 opdl user followers 1 --limit 50 --json
 
 # Check who a user is following
-opdl user following 1 --info userID,fullname
+opdl user following 1 --info userID,fullname,membershipType
 ```
 
 ### Working with Curations
@@ -484,7 +490,7 @@ opdl curation 12
 opdl curation sketches 12
 
 # Get first 20 sketches with specific fields
-opdl curation sketches 12 --limit 20 --info visualID,title,hearts
+opdl curation sketches 12 --limit 20 --info visualID,title,createdOn
 
 # Export curation data as JSON
 opdl curation 12 --json > curation-12.json
@@ -518,8 +524,13 @@ opdl user sketches 1 --info visualID --quiet | while read id; do
   opdl $id --outputDir ./user-1-sketches
 done
 
-# Search for sketches with "p5js" in title
-opdl user sketches 1 --json | jq '.[] | select(.title | contains("p5js"))'
+# Search for sketches with "p5js" in title (mode field)
+opdl user sketches 1 --json | jq '.[] | select(.mode == "p5js")'
+
+# Get full details for sketches in a user's list
+opdl user sketches 1 --info visualID --quiet | while read id; do
+  opdl sketch info $id --info title,license,tags,updatedOn
+done
 ```
 
 ## Field Selection
@@ -537,28 +548,93 @@ The `--info` option allows you to select specific fields from API responses.
 
 Use `opdl fields <fieldSet>` to see all available fields for a specific entity type.
 
+### Understanding Endpoint Differences
+
+**Important:** Different API endpoints return different fields. The OpenProcessing API has two types of sketch endpoints:
+
+1. **Single sketch endpoint** (`/api/sketch/:id`) - Returns full metadata
+   - Accessed via: `opdl sketch info <sketchId>` or `opdl <sketchId> --info`
+   - Use `opdl fields sketch` to see all available fields
+   - Includes fields like: `license`, `libraries`, `tags`, `isDraft`, `parentID`, etc.
+
+2. **List endpoints** - Return limited fields for performance
+
+   **User sketches** (`/api/user/:id/sketches`):
+   - Accessed via: `opdl user sketches <userId>`
+   - Use `opdl fields user.sketches` to see available fields
+   - Includes basic fields: `visualID`, `title`, `description`, `instructions`, `createdOn`, `mode`
+
+   **Curation sketches** (`/api/curation/:id/sketches`):
+   - Accessed via: `opdl curation sketches <curationId>`
+   - Use `opdl fields curation.sketches` to see available fields
+   - Includes more fields than user.sketches: `visualID`, `title`, `description`, `instructions`, `createdOn`, `submittedOn`, `mode`, `userID`, `fullname`, `membershipType`, `parentID`, `status`, `thumbnailUpdatedOn`, `videoUpdatedOn`
+
+   Both list endpoints do not include: `license`, `libraries`, `tags`, or other detailed metadata
+
+**To get full details for sketches in a list:**
+```bash
+# Get sketch IDs from list
+opdl user sketches 1 --info visualID --quiet | while read id; do
+  # Fetch full details for each sketch
+  opdl sketch info $id --info title,license,tags,libraries
+done
+```
+
 ### Common Sketch Fields
 
+When using `opdl sketch info <sketchId>` or `opdl <sketchId> --info`:
 - `visualID` - Sketch ID
 - `title` - Sketch title
 - `description` - Sketch description
+- `instructions` - Usage instructions
 - `license` - License type (CC BY-SA, MIT, etc.)
+- `tags` - Sketch tags
 - `libraries` - Libraries used (p5.js, p5.sound, etc.)
 - `createdOn` - Creation date
-- `modifiedOn` - Last modification date
-- `hearts` - Number of hearts (likes)
-- `views` - Number of views
+- `updatedOn` - Last modification date
+- `mode` - Sketch mode (p5js, processingjs, html, applet)
 - `userID` - Author's user ID
+- `parentID` - Parent sketch ID (if forked)
+- `isDraft` - Whether sketch is a draft
+- `isTemplate` - Whether sketch is a template
+- `isTutorial` - Whether sketch is a tutorial
+
+**Note:** The OpenProcessing API does not expose `hearts` or `views` counts in sketch metadata.
+
+When using `opdl user sketches <userId>`:
+- `visualID` - Sketch ID
+- `title` - Sketch title
+- `description` - Sketch description
+- `instructions` - Usage instructions
+- `createdOn` - Creation date
+- `mode` - Sketch mode (p5js, processing, etc.)
+
+When using `opdl curation sketches <curationId>` (includes author info):
+- `visualID` - Sketch ID
+- `title` - Sketch title
+- `description` - Sketch description
+- `instructions` - Usage instructions
+- `createdOn` - Creation date
+- `submittedOn` - Submission date
+- `mode` - Sketch mode (p5js, processing, etc.)
+- `userID` - Author user ID
+- `fullname` - Author full name
+- `membershipType` - Author membership type
+- `parentID` - Parent sketch ID (if forked)
+- `status` - Sketch status
+- `thumbnailUpdatedOn` - Thumbnail update date
+- `videoUpdatedOn` - Video update date
+
+Use `opdl fields user.sketches` or `opdl fields curation.sketches` for complete field listings.
 
 ### Common User Fields
 
 - `userID` - User ID
-- `username` - Username
 - `fullname` - Full name
 - `website` - Website URL
 - `location` - Location
-- `memberSince` - Member since date
 - `bio` - User biography
+- `createdOn` - Account creation date
 
 ### Notes on Field Selection
 
@@ -623,14 +699,14 @@ echo "Done! Downloaded $(echo "$SKETCH_IDS" | wc -l) sketches"
 Use `jq` for advanced JSON processing:
 
 ```bash
-# Get sketches with more than 100 hearts
-opdl user sketches 1 --json | jq '.[] | select(.hearts > 100)'
+# Filter sketches by mode
+opdl user sketches 1 --json | jq '.[] | select(.mode == "p5js")'
 
-# Sort sketches by views
-opdl user sketches 1 --json | jq 'sort_by(.views) | reverse'
+# Sort sketches by creation date
+opdl user sketches 1 --json | jq 'sort_by(.createdOn) | reverse'
 
-# Extract specific nested fields
-opdl sketch info 1142958 --json | jq '{title, author: .user.fullname}'
+# Extract specific fields from sketch info
+opdl sketch info 1142958 --json | jq '{title, license, mode}'
 ```
 
 ## Troubleshooting

@@ -141,7 +141,7 @@ npx vitest tests/fieldSelector.test.mjs
 - **Formatters/Selectors** - Isolated presentation logic
 
 ### Testing Philosophy
-- Tests use Vitest with ES modules (`.mjs` files)
+- Tests use Vitest with ES modules (`.mjs` files ONLY. No CommonJS in tests)
 - Mock external APIs with `nock` for HTTP, axios mocks for API client
 - Tests should fail before fixes (red-green-refactor)
 - Coverage includes edge cases: hidden sketches, missing files, API errors
