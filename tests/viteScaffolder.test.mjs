@@ -367,5 +367,31 @@ describe('viteScaffolder', () => {
       expect(htmlContent).toContain('/src/helpers.js');
       expect(htmlContent).toContain('/src/utils.js');
     });
+
+    it('should run the dev server when run flag is set even in quiet mode', async () => {
+      const codeFile = path.join(testDir, 'sketch.js');
+      fs.writeFileSync(codeFile, 'console.log("run test");', 'utf8');
+
+      // Provide basic index.html so scaffolding can update it
+      const indexHtml = path.join(testDir, 'index.html');
+      fs.writeFileSync(indexHtml, '<!DOCTYPE html><html><head></head><body></body></html>', 'utf8');
+
+      const runDevServerFn = vi.fn().mockResolvedValue();
+
+      const sketchInfo = {
+        sketchId: 67890,
+        metadata: { mode: 'p5js' },
+      };
+
+      await scaffoldViteProject(testDir, sketchInfo, {
+        codeFiles: [codeFile],
+        quiet: true,
+        run: true,
+        runDevServerFn,
+      });
+
+      expect(runDevServerFn).toHaveBeenCalledTimes(1);
+      expect(runDevServerFn).toHaveBeenCalledWith(testDir, { vite: true, quiet: true });
+    });
   });
 });

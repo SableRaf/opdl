@@ -178,15 +178,13 @@ function runSimpleHttpServer(outputDir, quiet, overrides = {}) {
       // Ensure the requested file is within outputDir (prevent directory traversal)
       const resolvedFullPath = pathModule.resolve(fullPath);
       const resolvedOutputDir = pathModule.resolve(outputDir);
-      const fullRoot = pathModule.parse(resolvedFullPath).root.toLowerCase();
-      const outputRoot = pathModule.parse(resolvedOutputDir).root.toLowerCase();
       const dirWithSep = resolvedOutputDir.endsWith(pathModule.sep)
         ? resolvedOutputDir
         : resolvedOutputDir + pathModule.sep;
       const withinOutputDir =
         resolvedFullPath === resolvedOutputDir || resolvedFullPath.startsWith(dirWithSep);
 
-      if (fullRoot !== outputRoot || !withinOutputDir) {
+      if (!withinOutputDir) {
         res.writeHead(403, { 'Content-Type': 'text/plain' });
         res.end('403 Forbidden');
         return;

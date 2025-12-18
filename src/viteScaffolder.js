@@ -20,9 +20,15 @@ function escapeRegExp(str) {
  * @param {Array} options.codeFiles - Array of saved code file paths
  * @param {boolean} options.quiet - Suppress output messages
  * @param {boolean} options.run - Automatically run dev server after setup
+ * @param {Function} [options.runDevServerFn] - Test hook for runDevServer
  */
 async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
-  const { codeFiles = [], quiet = false, run = false } = options;
+  const {
+    codeFiles = [],
+    quiet = false,
+    run = false,
+    runDevServerFn = runDevServer,
+  } = options;
 
   // Check Node version - Vite 6 requires Node 20+
   const nodeVersion = process.version;
@@ -170,8 +176,8 @@ async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
     }
 
     // Run dev server if --run flag is set
-    if (run && !quiet) {
-      await runDevServer(outputDir, { vite: true, quiet });
+    if (run) {
+      await runDevServerFn(outputDir, { vite: true, quiet });
     }
   } catch (error) {
     if (!quiet) {
