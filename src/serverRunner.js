@@ -1,12 +1,17 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 /**
  * Opens a URL in the default browser
  * @param {string} url - URL to open
+ * @param {Object} [overrides] - Dependency overrides for testing
+ * @param {string} [overrides.platform] - Platform identifier
+ * @param {Function} [overrides.spawnFn] - Spawn implementation
  */
-function openBrowser(url) {
+function openBrowser(url, overrides = {}) {
+  const { platform = process.platform, spawnFn = spawn } = overrides;
   let parsedUrl;
   try {
     // Validate URL to guard against arbitrary command fragments
@@ -15,7 +20,6 @@ function openBrowser(url) {
     return;
   }
 
-  const platform = process.platform;
   let command;
   let args;
 
@@ -31,15 +35,17 @@ function openBrowser(url) {
     args = [parsedUrl.toString()];
   }
 
-  const child = spawn(command, args, {
+  const child = spawnFn(command, args, {
     stdio: 'ignore',
     detached: true,
   });
 
-  child.on('error', () => {
-    // Silently fail - browser opening is a nice-to-have feature
-    // The user can still manually open the URL
-  });
+  if (child && typeof child.on === 'function') {
+    child.on('error', () => {
+      // Silently fail - browser opening is a nice-to-have feature
+      // The user can still manually open the URL
+    });
+  }
 }
 
 /**
@@ -65,12 +71,17 @@ async function runDevServer(outputDir, options = {}) {
  * @param {string} outputDir - Directory containing the Vite project
  * @param {boolean} quiet - Suppress output messages
  * @returns {Promise<void>}
+ * @param {Object} [overrides] - Dependency overrides for testing
+ * @param {typeof fs} [overrides.fsModule]
+ * @param {Function} [overrides.spawnFn]
+ * @param {string} [overrides.platform]
  */
-function runViteServer(outputDir, quiet) {
+function runViteServer(outputDir, quiet, overrides = {}) {
+  const { fsModule = fs, spawnFn = spawn, platform = process.platform } = overrides;
   return new Promise((resolve, reject) => {
     // Check if package.json exists
     const packageJsonPath = path.join(outputDir, 'package.json');
-    if (!fs.existsSync(packageJsonPath)) {
+    if (!fsModule.existsSync(packageJsonPath)) {
       reject(new Error('package.json not found. Cannot run Vite server.'));
       return;
     }
@@ -80,18 +91,20 @@ function runViteServer(outputDir, quiet) {
       console.log('opdl: Press Ctrl+C to stop the server.\n');
     }
 
-    const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const child = spawn(npm, ['run', 'dev'], {
+    const npm = platform === 'win32' ? 'npm.cmd' : 'npm';
+    const child = spawnFn(npm, ['run', 'dev'], {
       cwd: outputDir,
       stdio: 'inherit',
     });
 
-    child.on('error', (error) => {
-      if (!quiet) {
-        console.error('opdl: Error starting Vite server:', error.message);
-      }
-      reject(error);
-    });
+    if (child && typeof child.on === 'function') {
+      child.on('error', (error) => {
+        if (!quiet) {
+          console.error('opdl: Error starting Vite server:', error.message);
+        }
+        reject(error);
+      });
+    }
 
     // Vite server runs indefinitely, so we resolve immediately
     // The user will need to Ctrl+C to stop it
@@ -105,13 +118,25 @@ function runViteServer(outputDir, quiet) {
  * @param {string} outputDir - Directory to serve
  * @param {boolean} quiet - Suppress output messages
  * @returns {Promise<void>}
+ * @param {Object} [overrides] - Dependency overrides for testing
+ * @param {typeof http} [overrides.httpModule]
+ * @param {typeof fs} [overrides.fsModule]
+ * @param {typeof path} [overrides.pathModule]
+ * @param {Function} [overrides.openBrowserFn]
+ * @param {Function} [overrides.setTimeoutFn]
+ * @param {boolean} [overrides.resolveOnStart]
  */
-function runSimpleHttpServer(outputDir, quiet) {
-  return new Promise((resolve, reject) => {
-    const http = require('http');
-    const fs = require('fs');
-    const path = require('path');
+function runSimpleHttpServer(outputDir, quiet, overrides = {}) {
+  const {
+    httpModule = http,
+    fsModule = fs,
+    pathModule = path,
+    openBrowserFn = openBrowser,
+    setTimeoutFn = setTimeout,
+    resolveOnStart = false,
+  } = overrides;
 
+  return new Promise((resolve, reject) => {
     const PORT = 3000;
     const MIME_TYPES = {
       '.html': 'text/html',
@@ -136,7 +161,7 @@ function runSimpleHttpServer(outputDir, quiet) {
       '.txt': 'text/plain',
     };
 
-    const server = http.createServer((req, res) => {
+    const server = httpModule.createServer((req, res) => {
       // Sanitize the URL to prevent directory traversal
       let filePath = req.url === '/' ? '/index.html' : req.url;
 
@@ -147,16 +172,16 @@ function runSimpleHttpServer(outputDir, quiet) {
       }
 
       // Resolve the file path
-      const fullPath = path.join(outputDir, filePath);
+      const fullPath = pathModule.join(outputDir, filePath);
 
       // Ensure the requested file is within outputDir (prevent directory traversal)
-      const resolvedFullPath = path.resolve(fullPath);
-      const resolvedOutputDir = path.resolve(outputDir);
-      const fullRoot = path.parse(resolvedFullPath).root.toLowerCase();
-      const outputRoot = path.parse(resolvedOutputDir).root.toLowerCase();
-      const dirWithSep = resolvedOutputDir.endsWith(path.sep)
+      const resolvedFullPath = pathModule.resolve(fullPath);
+      const resolvedOutputDir = pathModule.resolve(outputDir);
+      const fullRoot = pathModule.parse(resolvedFullPath).root.toLowerCase();
+      const outputRoot = pathModule.parse(resolvedOutputDir).root.toLowerCase();
+      const dirWithSep = resolvedOutputDir.endsWith(pathModule.sep)
         ? resolvedOutputDir
-        : resolvedOutputDir + path.sep;
+        : resolvedOutputDir + pathModule.sep;
       const withinOutputDir =
         resolvedFullPath === resolvedOutputDir || resolvedFullPath.startsWith(dirWithSep);
 
@@ -167,7 +192,7 @@ function runSimpleHttpServer(outputDir, quiet) {
       }
 
       // Check if file exists
-      fs.stat(fullPath, (err, stats) => {
+      fsModule.stat(fullPath, (err, stats) => {
         if (err || !stats.isFile()) {
           res.writeHead(404, { 'Content-Type': 'text/plain' });
           res.end('404 Not Found');
@@ -175,11 +200,11 @@ function runSimpleHttpServer(outputDir, quiet) {
         }
 
         // Determine content type
-        const ext = path.extname(fullPath).toLowerCase();
+        const ext = pathModule.extname(fullPath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
         // Read and serve the file
-        fs.readFile(fullPath, (err, data) => {
+        fsModule.readFile(fullPath, (err, data) => {
           if (err) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('500 Internal Server Error');
@@ -198,17 +223,19 @@ function runSimpleHttpServer(outputDir, quiet) {
       if (!quiet) {
         console.log('\nopdl: HTTP server started!');
         console.log(`opdl: Local: ${url}`);
-        console.log(`opdl: Serving files from: ${path.basename(outputDir)}`);
+        console.log(`opdl: Serving files from: ${pathModule.basename(outputDir)}`);
         console.log('opdl: Press Ctrl+C to stop the server.\n');
       }
 
       // Open browser after a short delay to ensure server is ready
-      setTimeout(() => {
-        openBrowser(url);
+      setTimeoutFn(() => {
+        openBrowserFn(url);
       }, 500);
 
-      // Don't resolve - keep the promise pending to keep the server running
-      // The process will stay alive until the user presses Ctrl+C
+      if (resolveOnStart) {
+        resolve();
+      }
+      // Otherwise keep the promise pending to keep the server running
     });
 
     server.on('error', (error) => {
@@ -227,4 +254,4 @@ function runSimpleHttpServer(outputDir, quiet) {
   });
 }
 
-module.exports = { runDevServer };
+module.exports = { runDevServer, openBrowser, runViteServer, runSimpleHttpServer };
