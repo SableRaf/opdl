@@ -281,7 +281,12 @@ describe('Field Registry Validation', () => {
             break;
           }
         } catch (e) {
-          // Try next ID
+          console.error(
+            'Failed to fetch curation sketches for ID',
+            id,
+            ':',
+            e && e.message ? e.message : e
+          );
         }
       }
 
