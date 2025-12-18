@@ -39,7 +39,11 @@ opdl 2063664 --quiet
 # With npx (no global install)
 npx opdl 2063664
 ```
+### Advanced CLI Options
 
+See the [HELP.md](HELP.md) file for a full list of CLI options and flags.
+
+You can also run `opdl --help` to see all available options.
 
 ### Programmatic API
 
