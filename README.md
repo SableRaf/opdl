@@ -46,6 +46,9 @@ opdl <sketchId> [--outputDir=dir] [--quiet]
 # Check version
 opdl --version
 
+# Show command help
+opdl --help
+
 # Download sketch 2063664 to default directory (sketch_2063664)
 opdl 2063664
 
@@ -67,9 +70,7 @@ npx opdl 2063664
 
 ### Advanced CLI Options
 
-See the [HELP.md](HELP.md) file for a full list of CLI options and flags.
-
-You can also run `opdl --help` to see all available options.
+See the [documentation](HELP.md) file for a full list of CLI options and flags.
 
 ### Programmatic API
 
