@@ -1,52 +1,148 @@
 #!/usr/bin/env node
-(async () => {
-  const path = require('path');
-  const opdl = require(path.join('..', 'src', 'index.js'));
 
+const path = require('path');
+const { parseArgs } = require(path.join(__dirname, '..', 'src', 'cli.js'));
+const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'fields.js'));
+const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'sketch.js'));
+const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'user.js'));
+const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'curation.js'));
+
+/**
+ * Main CLI entry point
+ */
+async function main() {
   const argv = process.argv.slice(2);
 
-  const usage = () => {
-    console.log('Usage: opdl <sketchId> [--outputDir=dir] [--quiet]');
-    console.log('Example: opdl 2063664 --outputDir=./sketch_2063664');
-  };
-
+  // Handle help flag
   if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
-    usage();
+    showHelp();
     process.exit(0);
   }
 
-  // Simple arg parsing
-  const sketchId = argv.find(a => !a.startsWith('--'));
-  if (!sketchId) {
-    console.error('Error: missing sketchId');
-    usage();
-    process.exit(1);
-  }
-
-  const options = {};
-  argv.forEach(a => {
-    if (a.startsWith('--outputDir=')) options.outputDir = a.split('=')[1];
-    if (a === '--quiet') options.quiet = true;
-  });
-
   try {
-    const result = await opdl(sketchId, options);
-    if (result.success) {
-      console.log(`Downloaded: ${result.sketchInfo.title || sketchId}`);
-      if (result.outputPath) console.log(`Location: ${result.outputPath}`);
-      process.exit(0);
+    const parsed = parseArgs(argv);
+
+    switch (parsed.command) {
+      case 'fields':
+        await handleFieldsCommand({
+          fieldSetName: parsed.id,
+          json: parsed.options.json
+        });
+        break;
+
+      case 'sketch':
+        await handleSketchCommand({
+          subcommand: parsed.subcommand,
+          id: parsed.id,
+          options: parsed.options
+        });
+        break;
+
+      case 'user':
+        await handleUserCommand({
+          subcommand: parsed.subcommand,
+          id: parsed.id,
+          options: parsed.options
+        });
+        break;
+
+      case 'curation':
+        await handleCurationCommand({
+          subcommand: parsed.subcommand,
+          id: parsed.id,
+          options: parsed.options
+        });
+        break;
+
+      default:
+        console.error(`Unknown command: ${parsed.command}`);
+        process.exit(1);
     }
 
-    if (result.sketchInfo && result.sketchInfo.hiddenCode) {
-      console.error('Sketch source is private (hidden).');
-      process.exit(2);
-    }
-
-    console.error('Failed:', result.sketchInfo && result.sketchInfo.error ? result.sketchInfo.error : 'unknown error');
-    process.exit(1);
-  } catch (err) {
-    console.error('Unexpected error:', err && err.message ? err.message : err);
+    process.exit(0);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
     process.exit(1);
   }
+}
 
-})();
+/**
+ * Display help information
+ */
+function showHelp() {
+  console.log(`
+opdl - OpenProcessing Downloader CLI
+
+USAGE:
+  opdl <command> [options]
+
+COMMANDS:
+
+  Field Discovery:
+    opdl fields                           List all available field sets
+    opdl fields <fieldSet>                Show fields for a specific field set
+
+  Sketch Commands:
+    opdl <sketchId> [options]             Download sketch (shortcut)
+    opdl sketch download <id> [options]   Download sketch files
+    opdl sketch info <id> [options]       Display sketch metadata
+    opdl <sketchId> --info <fields>       Display selected sketch fields
+
+  User Commands:
+    opdl user <userId> [options]          Display user information
+    opdl user sketches <userId> [options] List user's sketches
+    opdl user followers <userId> [opts]   List user's followers
+    opdl user following <userId> [opts]   List users being followed
+
+  Curation Commands:
+    opdl curation <id> [options]          Display curation information
+    opdl curation sketches <id> [options] List sketches in curation
+
+OPTIONS:
+
+  Output Control:
+    --info <fields|all>    Select specific fields to display (comma-separated)
+    --json                 Output in JSON format
+    --quiet                Suppress output messages
+
+  List Options (for list commands):
+    --limit <n>            Limit number of results
+    --offset <n>           Skip first n results
+    --sort <asc|desc>      Sort order
+
+  Download Options (for sketch download):
+    --outputDir <path>     Output directory for files
+    --downloadThumbnail    Download thumbnail image
+    --saveMetadata         Save metadata JSON file
+    --skipAssets           Skip downloading asset files
+
+EXAMPLES:
+
+  # Field discovery
+  opdl fields
+  opdl fields sketch
+  opdl fields user.sketches
+
+  # Sketch operations
+  opdl 1142958 --info title,license,libraries
+  opdl sketch download 1142958 --outputDir=./projects
+  opdl 1142958 --outputDir=./projects --downloadThumbnail
+
+  # User operations
+  opdl user 1 --info fullname,website,memberSince
+  opdl user sketches 1 --limit 10 --info visualID,title
+  opdl user followers 1 --json
+
+  # Curation operations
+  opdl curation 12 --info title,description
+  opdl curation sketches 12 --limit 20 --sort desc
+
+ENVIRONMENT:
+  OP_API_KEY    OpenProcessing API key (if required)
+
+For more information, visit: https://github.com/SableRaf/opdl
+`);
+}
+
+// Run the CLI
+main();
