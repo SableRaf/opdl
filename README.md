@@ -1,6 +1,14 @@
 # opdl
 
-opdl (OpenProcessing Downloader) extracts a single OpenProcessing sketch by ID, reconstructs the HTML entry point, fetches assets, preserves licensing metadata, and adds attribution comments to the code.
+With `opdl`, you can take an OpenProcessing sketch, download it by ID, and get a ready-to-run local version that includes all files, assets, and credits.
+
+## Quick start (no installation required)
+
+Download sketch ID `2063664` to a folder named `sketch_2063664`:
+
+```
+npx opdl 2063664
+```
 
 ## Installation
 
@@ -39,6 +47,7 @@ opdl 2063664 --quiet
 # With npx (no global install)
 npx opdl 2063664
 ```
+
 ### Advanced CLI Options
 
 See the [HELP.md](HELP.md) file for a full list of CLI options and flags.
