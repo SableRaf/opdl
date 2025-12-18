@@ -115,6 +115,7 @@ OPTIONS:
     --downloadThumbnail    Download thumbnail image
     --saveMetadata         Save metadata JSON file
     --skipAssets           Skip downloading asset files
+    --vite                 Set up Vite project structure
 
 EXAMPLES:
 
@@ -127,6 +128,7 @@ EXAMPLES:
   opdl 1142958 --info title,license,libraries
   opdl sketch download 1142958 --outputDir=./projects
   opdl 1142958 --outputDir=./projects --downloadThumbnail
+  opdl 1142958 --vite
 
   # User operations
   opdl user 1 --info fullname,website,memberSince

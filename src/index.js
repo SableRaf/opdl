@@ -10,6 +10,7 @@ const defaultOptions = {
   createLicenseFile: true,
   createOpMetadata: true,
   quiet: false,
+  vite: false,
 };
 
 const opdl = async (sketchId, options = {}) => {

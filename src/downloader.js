@@ -20,7 +20,6 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   ensureDirectoryExists(outputDir);
   const shouldAddSourceComments = finalOptions.addSourceComments;
-  const sourceCommentBlock = shouldAddSourceComments ? buildCommentBlock(sketchInfo) : '';
 
   const savedCodeFiles = [];
   const sanitizedCodeParts = [];
@@ -41,7 +40,8 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     const codeFilePath = path.join(outputDir, codeFileName);
     let fileContent = codeBlock.code || '';
     if (shouldAddSourceComments && !fileContent.includes('Downloaded with opdl')) {
-      fileContent = `${sourceCommentBlock}${fileContent.startsWith('\n') ? '' : '\n'}${fileContent}`;
+      const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
+      fileContent = `${commentBlock}${fileContent.startsWith('\n') ? '' : '\n'}${fileContent}`;
     }
     fs.writeFileSync(codeFilePath, fileContent, 'utf8');
 
@@ -121,6 +121,15 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   if (finalOptions.createOpMetadata) {
     createOpMetadata(sketchInfo, outputDir, finalOptions);
+  }
+
+  // Set up Vite project if requested
+  if (finalOptions.vite) {
+    const { scaffoldViteProject } = require('./viteScaffolder');
+    await scaffoldViteProject(outputDir, sketchInfo, {
+      codeFiles: savedCodeFiles,
+      quiet: finalOptions.quiet,
+    });
   }
 
   return { outputDir, metadataDir, codeFiles: savedCodeFiles };
