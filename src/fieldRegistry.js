@@ -98,17 +98,16 @@ fieldRegistry.register({
     { name: 'description', description: 'Sketch description', type: 'string' },
     { name: 'instructions', description: 'Usage instructions', type: 'string' },
     { name: 'license', description: 'License type', type: 'string' },
+    { name: 'tags', description: 'Sketch tags', type: 'array' },
     { name: 'libraries', description: 'Libraries used', type: 'array' },
     { name: 'createdOn', description: 'Creation date', type: 'date' },
-    { name: 'modifiedOn', description: 'Last modification date', type: 'date' },
-    { name: 'submittedOn', description: 'Submission date', type: 'date' },
+    { name: 'updatedOn', description: 'Last modification date', type: 'date' },
     { name: 'mode', description: 'Sketch mode (p5.js, processing, etc.)', type: 'string' },
     { name: 'userID', description: 'Author user ID', type: 'number' },
     { name: 'parentID', description: 'Parent sketch ID if forked', type: 'number' },
-    { name: 'hearts', description: 'Number of hearts', type: 'number' },
-    { name: 'views', description: 'Number of views', type: 'number' },
-    { name: 'isPublic', description: 'Whether sketch is public', type: 'boolean' },
-    { name: 'isFeatured', description: 'Whether sketch is featured', type: 'boolean' },
+    { name: 'isDraft', description: 'Whether sketch is a draft', type: 'boolean' },
+    { name: 'isTemplate', description: 'Whether sketch is a template', type: 'boolean' },
+    { name: 'isTutorial', description: 'Whether sketch is a tutorial', type: 'boolean' },
   ],
 });
 
@@ -119,13 +118,11 @@ fieldRegistry.register({
   endpoint: '/api/user/:id',
   fields: [
     { name: 'userID', description: 'User ID', type: 'string' },
-    { name: 'username', description: 'Username', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'website', description: 'Website URL', type: 'string' },
     { name: 'location', description: 'Location', type: 'string' },
-    { name: 'memberSince', description: 'Member since date', type: 'date' },
     { name: 'bio', description: 'User biography', type: 'string' },
-    { name: 'avatarUrl', description: 'Avatar image URL', type: 'string' },
+    { name: 'createdOn', description: 'Account creation date', type: 'date' },
   ],
 });
 
@@ -139,8 +136,7 @@ fieldRegistry.register({
     { name: 'title', description: 'Curation title', type: 'string' },
     { name: 'description', description: 'Curation description', type: 'string' },
     { name: 'createdOn', description: 'Creation date', type: 'date' },
-    { name: 'createdBy', description: 'User who created the curation', type: 'object' },
-    { name: 'sketchCount', description: 'Number of sketches', type: 'number' },
+    { name: 'userID', description: 'Creator user ID', type: 'number' },
   ],
 });
 
@@ -152,10 +148,10 @@ fieldRegistry.register({
   fields: [
     { name: 'visualID', description: 'Sketch ID', type: 'number' },
     { name: 'title', description: 'Sketch title', type: 'string' },
-    { name: 'submittedOn', description: 'Submission date', type: 'date' },
-    { name: 'thumbnailUrl', description: 'Thumbnail URL', type: 'string' },
-    { name: 'hearts', description: 'Number of hearts', type: 'number' },
-    { name: 'views', description: 'Number of views', type: 'number' },
+    { name: 'description', description: 'Sketch description', type: 'string' },
+    { name: 'instructions', description: 'Usage instructions', type: 'string' },
+    { name: 'createdOn', description: 'Creation date', type: 'date' },
+    { name: 'mode', description: 'Sketch mode (p5.js, processing, etc.)', type: 'string' },
   ],
 });
 
@@ -168,7 +164,7 @@ fieldRegistry.register({
     { name: 'userID', description: 'User ID', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'followedOn', description: 'Date when follow occurred', type: 'date' },
-    { name: 'avatarUrl', description: 'Avatar image URL', type: 'string' },
+    { name: 'membershipType', description: 'Membership type', type: 'string' },
   ],
 });
 
@@ -181,7 +177,7 @@ fieldRegistry.register({
     { name: 'userID', description: 'User ID', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'followedOn', description: 'Date when follow occurred', type: 'date' },
-    { name: 'avatarUrl', description: 'Avatar image URL', type: 'string' },
+    { name: 'membershipType', description: 'Membership type', type: 'string' },
   ],
 });
 
@@ -193,10 +189,10 @@ fieldRegistry.register({
   fields: [
     { name: 'visualID', description: 'Sketch ID', type: 'number' },
     { name: 'title', description: 'Sketch title', type: 'string' },
-    { name: 'submittedOn', description: 'Submission date', type: 'date' },
-    { name: 'thumbnailUrl', description: 'Thumbnail URL', type: 'string' },
-    { name: 'hearts', description: 'Number of hearts', type: 'number' },
-    { name: 'views', description: 'Number of views', type: 'number' },
+    { name: 'description', description: 'Sketch description', type: 'string' },
+    { name: 'instructions', description: 'Usage instructions', type: 'string' },
+    { name: 'createdOn', description: 'Creation date', type: 'date' },
+    { name: 'mode', description: 'Sketch mode (p5.js, processing, etc.)', type: 'string' },
   ],
 });
 
