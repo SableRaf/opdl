@@ -196,7 +196,7 @@ User runs: opdl 123456
 
 1. CLI → index.js → opdl(123456)
 2. index.js → download/service.getCompleteSketchInfo(123456)
-3. Service makes parallel calls via Client:
+3. Service makes parallel calls via Client:    ← Maybe check first that the sketch exists
    ├── Client.getSketch(123456) → validates → metadata
    ├── Client.getSketchCode(123456) → validates → code
    ├── Client.getSketchFiles(123456) → validates → files
@@ -209,15 +209,16 @@ User runs: opdl 123456
    - Writes code files (with codeAttributor for attribution)
    - Writes assets
    - Generates index.html (htmlGenerator)
+   - Generate minimal style.css if needed (p5.js or applet mode)
    - Creates LICENSE (licenseHandler)
    - Writes metadata.json (metadataWriter)
 9. If --vite flag: viteScaffolder sets up Vite project
-10. If --run flag: serverRunner starts dev server
+10. OR If --run flag: serverRunner starts dev server
 ```
 
 **Example 2: Get Sketch Info** (CLI query)
 ```
-User runs: opdl sketch 123456 --info title,author
+User runs: opdl sketch 123456 --info title,author --json
 
 1. CLI → sketch.js → handleSketchCommand()
 2. sketch.js → Client.getSketch(123456)
@@ -635,16 +636,16 @@ src/
 │   ├── serverRunner.js              # ✨ MOVED: Dev server (--run flag)
 │   └── viteScaffolder.js            # ✨ MOVED: Vite project setup (--vite flag)
 │
-├── cli/                             # ✨ NEW: CLI Infrastructure
-│   ├── index.js                     # ✨ MOVED: Main CLI handler
-│   ├── fields.js                    # ✨ MOVED: Field definitions
-│   ├── fieldRegistry.js             # ✨ MOVED: Field registry
-│   ├── fieldSelector.js             # ✨ MOVED: Field selection
-│   ├── formatters.js                # ✨ MOVED: Output formatting
-│   └── commands/                    # ✨ MOVED: CLI Command Handlers
-│       ├── sketch.js
-│       ├── user.js
-│       └── curation.js
+└── cli/                             # ✨ NEW: CLI Infrastructure
+    ├── index.js                     # ✨ MOVED: Main CLI handler
+    ├── fields.js                    # ✨ MOVED: Field definitions
+    ├── fieldRegistry.js             # ✨ MOVED: Field registry
+    ├── fieldSelector.js             # ✨ MOVED: Field selection
+    ├── formatters.js                # ✨ MOVED: Output formatting
+    └── commands/                    # ✨ MOVED: CLI Command Handlers
+        ├── sketch.js
+        ├── user.js
+        └── curation.js
 ```
 
 ### Rationale by Directory
@@ -813,7 +814,7 @@ tests/
 │   ├── client.test.mjs          # ✨ NEW
 │   ├── validator.test.mjs       # ✨ MOVED
 │   └── types.test.mjs           # ✨ NEW (optional - for type validation)
-├── download/                     # ✨ NEW: Download feature tests
+├── download/                    # ✨ NEW: Download feature tests
 │   ├── service.test.mjs         # ✨ NEW (replaces fetcher.test.mjs)
 │   ├── downloader.test.mjs      # ✨ MOVED
 │   ├── codeAttributor.test.mjs  # ✨ MOVED
