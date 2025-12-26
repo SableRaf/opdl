@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { validateSketch, validateUser, VALIDATION_REASONS } = require('./validator');
+const { validateSketch, validateUser, VALIDATION_REASONS, MESSAGES } = require('./validator');
 
 const logError = (message, quiet) => {
   if (!quiet) {
@@ -35,20 +35,28 @@ const fetchCodeResponse = async (sketchId, options = {}) => {
   const { quiet = false } = options;
   const { data: responseData, error } = await fetchData(`https://openprocessing.org/api/sketch/${sketchId}/code`, `sketch code ${sketchId}`, { quiet });
 
+  // Validate responseData if it exists, regardless of error field
+  // This allows proper categorization of errors (private, hidden code, etc.)
+  if (responseData) {
+    const validation = validateSketch(responseData, { type: 'code' });
+
+    if (!validation.valid) {
+      if (!quiet && validation.message) {
+        logError(`Error for sketch ${sketchId}: ${validation.message}`, quiet);
+      }
+      return { codeParts: [], error: validation.message };
+    }
+
+    return { codeParts: validation.data, error: '' };
+  }
+
+  // Only return the error string if responseData is null
   if (error) {
     return { codeParts: [], error };
   }
 
-  const validation = validateSketch(responseData, { type: 'code' });
-
-  if (!validation.valid) {
-    if (!quiet && validation.message) {
-      logError(`Error for sketch ${sketchId}: ${validation.message}`, quiet);
-    }
-    return { codeParts: [], error: validation.message };
-  }
-
-  return { codeParts: validation.data, error: '' };
+  // This should not be reached, but handle it just in case
+  return { codeParts: [], error: 'Unexpected response format' };
 };
 
 const fetchUserInfo = async (userId, options = {}) => {
@@ -150,14 +158,20 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
   }
 
   // Fetch code
-  const { codeParts, error: codeError } = await fetchCodeResponse(parsedId, { quiet });
-  sketchInfo.codeParts = codeParts || [];
-  if (codeError) {
-    setError(codeError);
-    // Check if code error indicates unavailability
-    const codeValidation = validateSketch({ success: false, message: codeError }, { type: 'code' });
-    if (!codeValidation.valid && (codeValidation.reason === VALIDATION_REASONS.PRIVATE || codeValidation.reason === VALIDATION_REASONS.CODE_HIDDEN)) {
-      setUnavailable(codeValidation.reason, codeValidation.message);
+  const codeResponse = await fetchCodeResponse(parsedId, { quiet });
+  sketchInfo.codeParts = codeResponse.codeParts || [];
+  if (codeResponse.error) {
+    // Note: fetchCodeResponse now properly validates and categorizes errors
+    // Check the error message to determine if it indicates unavailability
+    const isPrivateError = codeResponse.error === MESSAGES.PRIVATE_SKETCH;
+    const isHiddenError = codeResponse.error === MESSAGES.HIDDEN_CODE;
+
+    if (isPrivateError) {
+      setUnavailable(VALIDATION_REASONS.PRIVATE, codeResponse.error);
+    } else if (isHiddenError) {
+      setUnavailable(VALIDATION_REASONS.CODE_HIDDEN, codeResponse.error);
+    } else {
+      setError(codeResponse.error);
     }
   }
 
