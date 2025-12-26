@@ -79,10 +79,6 @@ const opdl = require('opdl');
 
 (async () => {
   const result = await opdl('2063664');
-  if (!result.success && result.sketchInfo.hiddenCode) {
-    console.log('Sketch source is private');
-    return;
-  }
 
   if (result.success) {
     console.log(`Downloaded sketch: ${result.sketchInfo.title} by ${result.sketchInfo.author}`);
@@ -124,7 +120,7 @@ sketch_{id}/
 ## Error Handling
 
 - Invalid or malformed sketch IDs immediately resolve with `success: false` and an appropriate error message.
-- Hidden sketches abort the download and set `sketchInfo.hiddenCode = true`.
+- Private sketches and sketches with hidden code abort the download and populate `sketchInfo.error` with details.
 - Network or file-system errors populate `sketchInfo.error` while still returning a structured result.
 - Asset-download failures are logged (unless `quiet: true`) but do not abort the operation.
 
