@@ -41,7 +41,7 @@ const fetchCodeResponse = async (sketchId, options = {}) => {
     const validation = validateSketch(responseData, { type: 'code' });
 
     if (!validation.valid) {
-      if (!quiet && validation.message) {
+      if (validation.message) {
         logError(`Error for sketch ${sketchId}: ${validation.message}`, quiet);
       }
       return { codeParts: [], error: validation.message };
