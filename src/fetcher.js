@@ -110,10 +110,7 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
   };
 
   // Fetch metadata
-  const { data: metadata, error: metadataError } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet });
-  if (metadataError) {
-    setError(metadataError);
-  }
+  const { data: metadata } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet });
 
   // Validate metadata
   const metadataValidation = validateSketch(metadata, { type: 'metadata' });
@@ -133,10 +130,7 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
 
   // Fetch parent metadata if fork
   if (sketchInfo.isFork && sketchInfo.parent.sketchID) {
-    const { data: parentMetadata, error: parentMetadataError } = await fetchData(`https://openprocessing.org/api/sketch/${sketchInfo.parent.sketchID}`, `parent sketch ${sketchInfo.parent.sketchID}`, { quiet });
-    if (parentMetadataError) {
-      setError(parentMetadataError);
-    }
+    const { data: parentMetadata } = await fetchData(`https://openprocessing.org/api/sketch/${sketchInfo.parent.sketchID}`, `parent sketch ${sketchInfo.parent.sketchID}`, { quiet });
 
     if (parentMetadata) {
       sketchInfo.parent.title = parentMetadata.title || '';
@@ -147,10 +141,7 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
 
   // Fetch user info
   if (sketchInfo.metadata.userID) {
-    const { data: user, error: userError } = await fetchData(`https://openprocessing.org/api/user/${sketchInfo.metadata.userID}`, `user ${sketchInfo.metadata.userID}`, { quiet });
-    if (userError) {
-      setError(userError);
-    }
+    const { data: user } = await fetchData(`https://openprocessing.org/api/user/${sketchInfo.metadata.userID}`, `user ${sketchInfo.metadata.userID}`, { quiet });
 
     if (user) {
       sketchInfo.author = user.fullname || '';
