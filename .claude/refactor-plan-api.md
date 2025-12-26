@@ -117,23 +117,23 @@ All list endpoints support:
              │                                  │
              │ Uses                             │ Uses
              ▼                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   DOWNLOAD FEATURE (NEW)                        │
-│                   src/download/                                 │
-│                                                                 │
-│  service.js:                                                    │
+┌────────────────────────────────────────────────────────────────┐
+│                   DOWNLOAD FEATURE (NEW)                       │
+│                   src/download/                                │
+│                                                                │
+│  service.js:                                                   │
 │  • getCompleteSketchInfo(id)  ← Orchestrates API calls         │
-│                                                                 │
-│  downloader.js:                                                 │
+│                                                                │
+│  downloader.js:                                                │
 │  • downloadSketch()           ← Main download orchestration    │
-│                                                                 │
-│  Content Generators:                                            │
+│                                                                │
+│  Content Generators:                                           │
 │  • htmlGenerator.js           ← Generate index.html            │
 │  • codeAttributor.js          ← Add attribution comments       │
 │  • licenseHandler.js          ← Create LICENSE file            │
 │  • metadataWriter.js          ← Write metadata.json            │
-│                                                                 │
-│  Dev Tools:                                                     │
+│                                                                │
+│  Dev Tools:                                                    │
 │  • serverRunner.js            ← Run sketch (--run flag)        │
 │  • viteScaffolder.js          ← Setup Vite (--vite flag)       │
 └────────────┬────────────────────────────────────┬──────────────┘
@@ -145,23 +145,23 @@ All list endpoints support:
 │                   src/api/client.js                             │
 │               OpenProcessingClient class                        │
 │                                                                 │
-│  User Endpoints:            Sketch Endpoints:                  │
-│  • getUser(id)              • getSketch(id)                    │
-│  • getUserSketches()        • getSketchCode(id)                │
-│  • getUserFollowers()       • getSketchFiles(id)               │
-│  • getUserFollowing()       • getSketchLibraries(id)           │
-│  • getUserHearts() [NEW]    • getSketchForks(id) [NEW]         │
-│                             • getSketchHearts(id) [NEW]        │
-│  Curation Endpoints:                                           │
-│  • getCuration(id)          Other:                             │
-│  • getCurationSketches()    • getTags(options) [NEW]           │
+│  User Endpoints:            Sketch Endpoints:                   │
+│  • getUser(id)              • getSketch(id)                     │
+│  • getUserSketches()        • getSketchCode(id)                 │
+│  • getUserFollowers()       • getSketchFiles(id)                │
+│  • getUserFollowing()       • getSketchLibraries(id)            │
+│  • getUserHearts() [NEW]    • getSketchForks(id) [NEW]          │
+│                             • getSketchHearts(id) [NEW]         │
+│  Curation Endpoints:                                            │
+│  • getCuration(id)          Other:                              │
+│  • getCurationSketches()    • getTags(options) [NEW]            │
 │                                                                 │
 │  Responsibilities:                                              │
-│  - 1:1 mapping to OpenProcessing API                           │
-│  - HTTP request/response handling                              │
-│  - Validate all responses                                      │
-│  - Throw errors for invalid data                               │
-└────────────┬────────────────────────────────────┬──────────────┘
+│  - 1:1 mapping to OpenProcessing API                            │
+│  - HTTP request/response handling                               │
+│  - Validate all responses                                       │
+│  - Throw errors for invalid data                                │
+└────────────┬────────────────────────────────────┬───────────────┘
              │                                    │
              │ Validates with                     │ Makes HTTP with
              ▼                                    ▼
