@@ -168,7 +168,7 @@ describe('fetcher', () => {
 
       expect(result.available).toBe(false);
       expect(result.unavailableReason).toBe(VALIDATION_REASONS.PRIVATE);
-      expect(result.error).toContain('private sketch');
+      expect(result.error).toBe('This sketch is private and cannot be downloaded.');
       expect(result.metadata).toEqual({});
       expect(result.codeParts).toHaveLength(0);
     });
