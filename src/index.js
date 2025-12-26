@@ -24,7 +24,6 @@ const opdl = async (sketchId, options = {}) => {
       author: '',
       mode: '',
       isFork: false,
-      hiddenCode: false,
       error: '',
     },
   };
@@ -45,12 +44,11 @@ const opdl = async (sketchId, options = {}) => {
   result.sketchInfo.author = sketchInfo.author || '';
   result.sketchInfo.mode = sketchInfo.mode || sketchInfo.metadata?.mode || '';
   result.sketchInfo.isFork = sketchInfo.isFork;
-  result.sketchInfo.hiddenCode = sketchInfo.hiddenCode;
   if (sketchInfo.error) {
     result.sketchInfo.error = sketchInfo.error;
   }
 
-  if (sketchInfo.hiddenCode) {
+  if (!sketchInfo.available) {
     return result;
   }
 

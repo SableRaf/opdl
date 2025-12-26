@@ -86,7 +86,6 @@ describe('opdl (integration)', () => {
     const result = await opdl(sketchId, { quiet: true });
 
     expect(result.success).toBe(false);
-    expect(result.sketchInfo.hiddenCode).toBe(true);
     expect(result.sketchInfo.title).toBe('Hidden Sketch');
     expect(result.sketchInfo.author).toBe('Test Author');
     expect(result.outputPath).toBeNull();
@@ -134,7 +133,6 @@ describe('opdl (integration)', () => {
     expect(result.sketchInfo.title).toBe('Test P5 Sketch');
     expect(result.sketchInfo.author).toBe('Test Author');
     expect(result.sketchInfo.mode).toBe('p5js');
-    expect(result.sketchInfo.hiddenCode).toBe(false);
     expect(result.sketchInfo.isFork).toBe(false);
     expect(result.outputPath).toBe(testDir);
 

@@ -1,6 +1,7 @@
 const { OpenProcessingClient } = require('../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
+const { validateId } = require('../validator');
 
 /**
  * Handle user-related commands
@@ -11,7 +12,13 @@ const { formatObject, formatArray } = require('../formatters');
  */
 async function handleUserCommand(args) {
   const client = new OpenProcessingClient(process.env.OP_API_KEY);
-  const userId = Number(args.id);
+
+  // Validate user ID
+  const idValidation = validateId(args.id);
+  if (!idValidation.valid) {
+    throw new Error(idValidation.message);
+  }
+  const userId = idValidation.data;
 
   const listOptions = {
     limit: args.options.limit,
@@ -20,7 +27,7 @@ async function handleUserCommand(args) {
   };
 
   if (!args.subcommand) {
-    // opdl user <id> --info ...
+    // opdl user <id> --info ... (client validates the response)
     const user = await client.getUser(userId);
 
     let output = user;

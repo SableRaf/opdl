@@ -5,6 +5,7 @@
  */
 
 const axios = require('axios');
+const { validateSketch, validateUser, validateCuration } = require('../validator');
 
 /**
  * @typedef {import('../types/api')} API
@@ -30,9 +31,16 @@ class OpenProcessingClient {
    * Get sketch metadata
    * @param {number} id - Sketch ID
    * @returns {Promise<any>} Sketch data
+   * @throws {Error} If sketch is not found, private, or API returns an error
    */
   async getSketch(id) {
-    const response = await this.client.get(`/api/sketch/${id}`);
+    const response = await this.client.get(`/api/sketch/${id}`, { validateStatus: () => true });
+    const validation = validateSketch(response.data, { type: 'metadata' });
+
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+
     return response.data;
   }
 
@@ -82,9 +90,16 @@ class OpenProcessingClient {
    * Get user information
    * @param {number|string} id - User ID
    * @returns {Promise<any>} User data
+   * @throws {Error} If user is not found or API returns an error
    */
   async getUser(id) {
-    const response = await this.client.get(`/api/user/${id}`);
+    const response = await this.client.get(`/api/user/${id}`, { validateStatus: () => true });
+    const validation = validateUser(response.data);
+
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+
     return response.data;
   }
 
@@ -140,9 +155,16 @@ class OpenProcessingClient {
    * Get curation information
    * @param {number} id - Curation ID
    * @returns {Promise<any>} Curation data
+   * @throws {Error} If curation is not found or API returns an error
    */
   async getCuration(id) {
-    const response = await this.client.get(`/api/curation/${id}`);
+    const response = await this.client.get(`/api/curation/${id}`, { validateStatus: () => true });
+    const validation = validateCuration(response.data);
+
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+
     return response.data;
   }
 

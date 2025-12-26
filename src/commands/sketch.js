@@ -1,6 +1,7 @@
 const { OpenProcessingClient } = require('../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject } = require('../formatters');
+const { validateId } = require('../validator');
 const opdl = require('../index');
 
 /**
@@ -12,10 +13,16 @@ const opdl = require('../index');
  */
 async function handleSketchCommand(args) {
   const client = new OpenProcessingClient(process.env.OP_API_KEY);
-  const sketchId = Number(args.id);
+
+  // Validate sketch ID
+  const idValidation = validateId(args.id);
+  if (!idValidation.valid) {
+    throw new Error(idValidation.message);
+  }
+  const sketchId = idValidation.data;
 
   if (args.subcommand === 'info' || args.options.info) {
-    // Get sketch metadata
+    // Get sketch metadata (client validates the response)
     const sketch = await client.getSketch(sketchId);
 
     // Select fields if --info specified

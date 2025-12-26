@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import nock from 'nock';
-import { fetchSketchInfo, fetchUserInfo, isSketchCodeHidden } from '../src/fetcher';
+import { fetchSketchInfo, fetchUserInfo } from '../src/fetcher';
+import { VALIDATION_REASONS } from '../src/validator';
 
 describe('fetcher', () => {
   beforeEach(() => {
@@ -9,36 +10,6 @@ describe('fetcher', () => {
 
   afterEach(() => {
     nock.cleanAll();
-  });
-
-  describe('isSketchCodeHidden', () => {
-    it('should return true for hidden code response', () => {
-      const response = {
-        success: false,
-        message: 'Sketch source code is hidden.',
-      };
-      expect(isSketchCodeHidden(response)).toBe(true);
-    });
-
-    it('should return false for successful response', () => {
-      const response = {
-        success: true,
-        data: [],
-      };
-      expect(isSketchCodeHidden(response)).toBe(false);
-    });
-
-    it('should return false for null response', () => {
-      expect(isSketchCodeHidden(null)).toBe(false);
-    });
-
-    it('should return false for different error messages', () => {
-      const response = {
-        success: false,
-        message: 'Some other error',
-      };
-      expect(isSketchCodeHidden(response)).toBe(false);
-    });
   });
 
   describe('fetchUserInfo', () => {
@@ -137,7 +108,8 @@ describe('fetcher', () => {
       expect(result.mode).toBe('p5js');
       expect(result.author).toBe('Test Author');
       expect(result.isFork).toBe(false);
-      expect(result.hiddenCode).toBe(false);
+      expect(result.available).toBe(true);
+      expect(result.unavailableReason).toBeNull();
       expect(result.codeParts).toHaveLength(1);
       expect(result.files).toHaveLength(1);
       expect(result.libraries).toHaveLength(1);
@@ -177,7 +149,27 @@ describe('fetcher', () => {
 
       const result = await fetchSketchInfo(sketchId);
 
-      expect(result.hiddenCode).toBe(true);
+      expect(result.available).toBe(false);
+      expect(result.unavailableReason).toBe(VALIDATION_REASONS.CODE_HIDDEN);
+      expect(result.codeParts).toHaveLength(0);
+    });
+
+    it('should mark private sketches and stop processing', async () => {
+      const sketchId = 12345;
+
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}`)
+        .reply(200, {
+          success: false,
+          message: 'This is a private sketch.',
+        });
+
+      const result = await fetchSketchInfo(sketchId);
+
+      expect(result.available).toBe(false);
+      expect(result.unavailableReason).toBe(VALIDATION_REASONS.PRIVATE);
+      expect(result.error).toBe('This sketch is private and cannot be downloaded.');
+      expect(result.metadata).toEqual({});
       expect(result.codeParts).toHaveLength(0);
     });
 

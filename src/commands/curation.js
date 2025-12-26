@@ -1,6 +1,7 @@
 const { OpenProcessingClient } = require('../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
+const { validateId } = require('../validator');
 
 /**
  * Handle curation-related commands
@@ -11,7 +12,13 @@ const { formatObject, formatArray } = require('../formatters');
  */
 async function handleCurationCommand(args) {
   const client = new OpenProcessingClient(process.env.OP_API_KEY);
-  const curationId = Number(args.id);
+
+  // Validate curation ID
+  const idValidation = validateId(args.id);
+  if (!idValidation.valid) {
+    throw new Error(idValidation.message);
+  }
+  const curationId = idValidation.data;
 
   const listOptions = {
     limit: args.options.limit,
@@ -20,7 +27,7 @@ async function handleCurationCommand(args) {
   };
 
   if (!args.subcommand) {
-    // opdl curation <id> --info ...
+    // opdl curation <id> --info ... (client validates the response)
     const curation = await client.getCuration(curationId);
 
     let output = curation;
