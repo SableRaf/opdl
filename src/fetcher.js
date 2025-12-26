@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { validateSketch, validateUser, VALIDATION_REASONS, MESSAGES } = require('./validator');
+const { validateSketch, VALIDATION_REASONS, MESSAGES } = require('./validator');
 
 const logError = (message, quiet) => {
   if (!quiet) {

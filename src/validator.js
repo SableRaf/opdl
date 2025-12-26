@@ -266,6 +266,7 @@ const validateCuration = (responseData) => {
 
 /**
  * Validate an ID value
+ * ID should be a positive integer
  * @param {*} id - ID to validate
  * @returns {ValidationResult}
  */
