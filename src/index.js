@@ -50,6 +50,10 @@ const opdl = async (sketchId, options = {}) => {
     result.sketchInfo.error = sketchInfo.error;
   }
 
+  if (sketchInfo.privateSketch) {
+    return result;
+  }
+
   if (sketchInfo.hiddenCode) {
     return result;
   }

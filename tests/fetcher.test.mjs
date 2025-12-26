@@ -181,6 +181,24 @@ describe('fetcher', () => {
       expect(result.codeParts).toHaveLength(0);
     });
 
+    it('should mark private sketches and stop processing', async () => {
+      const sketchId = 12345;
+
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}`)
+        .reply(200, {
+          success: false,
+          message: 'This is a private sketch.',
+        });
+
+      const result = await fetchSketchInfo(sketchId);
+
+      expect(result.privateSketch).toBe(true);
+      expect(result.error).toBe('This is a private sketch.');
+      expect(result.metadata).toEqual({});
+      expect(result.codeParts).toHaveLength(0);
+    });
+
     it('should handle fork sketches correctly', async () => {
       const sketchId = 12345;
       const parentId = 67890;

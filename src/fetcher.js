@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 const HIDDEN_CODE_MESSAGE = 'Sketch source code is hidden.';
+const PRIVATE_SKETCH_MESSAGE = 'private sketch';
 
 const logError = (message, quiet) => {
   if (!quiet) {
@@ -43,31 +44,46 @@ const isSketchCodeHidden = (responseData) => {
   return false;
 };
 
+const isSketchPrivate = (responseData) => {
+  if (!responseData) {
+    return false;
+  }
+
+  if (responseData.success === false && typeof responseData.message === 'string') {
+    return responseData.message.toLowerCase().includes(PRIVATE_SKETCH_MESSAGE);
+  }
+
+  return false;
+};
+
 const fetchCodeResponse = async (sketchId, options = {}) => {
   const { quiet = false } = options;
   const { data: responseData, error } = await fetchData(`https://openprocessing.org/api/sketch/${sketchId}/code`, `sketch code ${sketchId}`, { quiet });
+  if (isSketchPrivate(responseData)) {
+    return { isHidden: false, isPrivate: true, codeParts: [], error: responseData.message || 'This is a private sketch.' };
+  }
   const isHidden = isSketchCodeHidden(responseData);
 
   if (isHidden) {
-    return { isHidden: true, codeParts: [], error: '' };
+    return { isHidden: true, isPrivate: false, codeParts: [], error: '' };
   }
 
   if (error) {
-    return { isHidden: false, codeParts: [], error };
+    return { isHidden: false, isPrivate: false, codeParts: [], error };
   }
 
   if (Array.isArray(responseData)) {
-    return { isHidden: false, codeParts: responseData, error: '' };
+    return { isHidden: false, isPrivate: false, codeParts: responseData, error: '' };
   }
 
   if (responseData && responseData.success === false) {
     logError(`The API responded with an error for sketch ${sketchId}: "${responseData.message}"`, quiet);
-    return { isHidden: false, codeParts: [], error: responseData.message || 'API error' };
+    return { isHidden: false, isPrivate: false, codeParts: [], error: responseData.message || 'API error' };
   }
 
   const errorMessage = `Unexpected response format for sketch code ${sketchId}`;
   logError(errorMessage, quiet);
-  return { isHidden: false, codeParts: [], error: errorMessage };
+  return { isHidden: false, isPrivate: false, codeParts: [], error: errorMessage };
 };
 
 const fetchUserInfo = async (userId, options = {}) => {
@@ -98,6 +114,7 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
     libraries: [],
     mode: '',
     hiddenCode: false,
+    privateSketch: false,
     error: '',
     parent: {
       sketchID: null,
@@ -119,6 +136,12 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
   }
 
   if (metadata) {
+    if (isSketchPrivate(metadata)) {
+      sketchInfo.privateSketch = true;
+      setError(metadata.message || 'This is a private sketch.');
+      sketchInfo.metadata = {};
+      return sketchInfo;
+    }
     sketchInfo.metadata = metadata;
     sketchInfo.mode = metadata.mode || '';
     sketchInfo.title = metadata.title || '';
@@ -150,8 +173,11 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
     }
   }
 
-  const { isHidden, codeParts, error: codeError } = await fetchCodeResponse(parsedId, { quiet });
+  const { isHidden, isPrivate, codeParts, error: codeError } = await fetchCodeResponse(parsedId, { quiet });
   sketchInfo.hiddenCode = isHidden;
+  if (isPrivate) {
+    sketchInfo.privateSketch = true;
+  }
   sketchInfo.codeParts = codeParts || [];
   if (codeError) {
     setError(codeError);
