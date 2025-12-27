@@ -26,7 +26,7 @@ As a CLI user or developer, I need access to all 14 OpenProcessing API endpoints
 
 **Sketch Endpoints (7 methods)**:
 6. **Given** a valid sketch ID, **When** I call `getSketch(sketchId)`, **Then** I receive the sketch's metadata
-7. **Given** a valid sketch ID, **When** I call `getSketchCode(sketchId)`, **Then** I receive the sketch's source code with validation applied
+7. **Given** a valid sketch ID, **When** I call `getSketchCode(sketchId)`, **Then** I receive the sketch's source code as an array of CodeFile objects with response structure validation (checking codeID, orderID, code, title fields exist and are correct types)
 8. **Given** a valid sketch ID, **When** I call `getSketchFiles(sketchId, options)`, **Then** I receive a list of the sketch's asset files
 9. **Given** a valid sketch ID, **When** I call `getSketchLibraries(sketchId, options)`, **Then** I receive a list of libraries used by the sketch
 10. **Given** a valid sketch ID, **When** I call `getSketchForks(sketchId, options)`, **Then** I receive a list of forks of that sketch
@@ -41,6 +41,7 @@ As a CLI user or developer, I need access to all 14 OpenProcessing API endpoints
 
 **Pagination and Validation**:
 15. **Given** any list endpoint (getUserSketches, getUserFollowers, getUserFollowing, getUserHearts, getSketchFiles, getSketchLibraries, getSketchForks, getSketchHearts, getCurationSketches, getTags), **When** I provide pagination options (limit, offset, sort), **Then** the options are validated before the API call and applied correctly to the request
+16. **Given** any list endpoint, **When** I call the method, **Then** I receive an object `{ data: Array, hasMore: boolean }` where `hasMore` indicates if more results are available beyond the current page
 
 ---
 
@@ -122,6 +123,18 @@ As a developer adding new API features, I need all validation logic centralized 
 - How does backward compatibility work if fetcher.js is eventually removed?
 - What happens when validation fails for optional fields in API responses?
 - How does the system handle breaking changes in the OpenProcessing API in the future?
+- What happens when a list endpoint returns an empty array (user with 0 sketches, sketch with 0 libraries)? Client should return `{ data: [], hasMore: false }` with no errors. (M-1)
+- What happens when the client exceeds the OpenProcessing API rate limit (40 calls/minute)? Client should detect 429 errors, provide clear error message with retry-after guidance, but NOT implement automatic rate limiting (user responsibility). (H-6)
+
+## Clarifications
+
+### Session 2025-12-27
+
+- Q: How should client methods return the `hasMore` pagination indicator to calling code? → A: Return object `{ data: Array, hasMore: boolean }` for all list endpoints
+- Q: What are the valid parameter constraints for ListOptions (limit range, offset minimum, sort values, and defaults)? → A: limit: 1-100 (default 20), offset: ≥0 (default 0), sort: "asc"|"desc" (default "desc")
+- Q: What are the valid values and default for the `duration` parameter in TagsOptions? → A: "thisWeek"|"thisMonth"|"thisYear"|"anytime" (default "anytime")
+- Q: Should ValidationResult include a `meta` field for response metadata like `hasMore`, or should pagination metadata be handled separately? → A: Include `meta` field: `{ valid, message, data, meta: { hasMore } }` in ValidationResult
+- Q: Should the Sketch typedef (and other API entity types) include ALL fields from the OpenProcessing API documentation, or only a subset? → A: Include ALL fields from API documentation in typedefs (complete 1:1 mapping)
 
 ## Requirements *(mandatory)*
 
@@ -136,12 +149,14 @@ As a developer adding new API features, I need all validation logic centralized 
 - **FR-006**: Client MUST add validation to the existing `getSketchCode()` method
 - **FR-007**: All list endpoint methods MUST accept ListOptions (limit, offset, sort) parameters
 - **FR-008**: All list endpoint methods MUST validate options before making HTTP requests
+- **FR-038**: All list endpoint methods MUST return an object with structure `{ data: Array, hasMore: boolean }` where `hasMore` is parsed from API response headers
+- **FR-039**: ListOptions MUST define: limit (number, range 1-100, default 20), offset (number, minimum 0, default 0), sort (enum "asc"|"desc", default "desc"), all parameters optional
 
 #### Validation Centralization
 - **FR-009**: System MUST validate all list options through `validateListOptions()` in validator.js
 - **FR-010**: System MUST validate tags options through `validateTagsOptions()` in validator.js
-- **FR-011**: All API response validation MUST occur in validator.js functions
-- **FR-012**: Validation functions MUST return consistent ValidationResult objects with `{ valid, message, data }` structure
+- **FR-011**: All API response validation MUST occur in validator.js functions with scope: top-level required field presence, correct types (string/number/array/object), and array structure validation; deep nested object validation optional
+- **FR-012**: Validation functions MUST return consistent ValidationResult objects with `{ valid, message, data, meta }` structure, where `meta` is optional and contains response metadata like `{ hasMore }` for list endpoints. The `message` field is developer-facing and may contain technical details.
 - **FR-013**: System MUST NOT duplicate validation logic across multiple files
 
 #### Single Source of Truth
@@ -172,11 +187,13 @@ As a developer adding new API features, I need all validation logic centralized 
 - **FR-032**: System MUST provide deprecation path for fetcher.js with warnings before removal
 
 #### Type Definitions
-- **FR-033**: System MUST define JSDoc types for all API entities (Sketch, User, Curation, etc.)
+- **FR-033**: System MUST define JSDoc types for all API entities (Sketch, User, Curation, etc.) including ALL fields from OpenProcessing API documentation to maintain complete 1:1 API mapping
 - **FR-034**: System MUST define JSDoc types for all list item types (UserSketchItem, SketchForkItem, etc.)
 - **FR-035**: System MUST define ListOptions type for pagination parameters
 - **FR-036**: System MUST define TagsOptions type for tags endpoint parameters
 - **FR-037**: All client methods MUST have comprehensive JSDoc documentation with type information
+- **FR-040**: TagsOptions MUST define: duration (enum "thisWeek"|"thisMonth"|"thisYear"|"anytime", default "anytime"), plus standard ListOptions (limit, offset, sort), all parameters optional
+- **FR-041**: Client MUST detect HTTP 429 (Too Many Requests) errors and provide descriptive error messages indicating rate limit exceeded (40 calls/minute) with suggestion to implement retry logic or reduce request frequency
 
 ### Key Entities
 
@@ -185,7 +202,7 @@ As a developer adding new API features, I need all validation logic centralized 
 - **Validator**: Centralized validation module with functions for each API entity type and options
 - **API Entities**: Data structures returned by the OpenProcessing API (Sketch, User, Curation, Tag)
 - **List Items**: Simplified data structures for list endpoints (UserSketchItem, SketchForkItem, UserFollowerItem, etc.)
-- **List Options**: Pagination and sorting parameters (limit, offset, sort)
+- **List Options**: Pagination and sorting parameters with constraints: limit (1-100, default 20), offset (≥0, default 0), sort ("asc"|"desc", default "desc")
 - **Sketch Info**: Aggregated object containing complete sketch data (metadata, code, files, libraries, parent, author)
 
 ## Success Criteria *(mandatory)*
@@ -204,6 +221,7 @@ As a developer adding new API features, I need all validation logic centralized 
 - **SC-010**: Number of files at src/ root reduces from 17 to 2 (index.js, utils.js)
 - **SC-011**: All validation logic consolidated into single validator.js module (verified by code search showing no validation in other files)
 - **SC-012**: Download service successfully aggregates data from multiple client methods without direct HTTP calls
+- **SC-013**: All client method return values include ALL fields documented in OpenProcessing API (verified by comparing API response samples from openprocessingapi.md against JSDoc typedefs in src/api/types.js)
 
 ## Assumptions
 

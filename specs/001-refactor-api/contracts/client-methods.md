@@ -1,11 +1,92 @@
-# OpenProcessingClient Method Signatures
+# OpenProcessingClient Method Contracts
 
 **Feature Branch**: `001-refactor-api`
 **Date**: 2025-12-27
+**Source**: Remediation Plan CR-3
 
-This document defines the JavaScript/JSDoc method signatures for the `OpenProcessingClient` class.
+This document defines explicit method contracts for all 14 OpenProcessing API client methods, specifying parameter types, return types, and the distinction between single entity endpoints and list endpoints.
 
-## Class Constructor
+## Return Type Conventions
+
+**Single Entity Endpoints** (return raw data object):
+- `getUser(userId)` → `Promise<User>`
+- `getSketch(sketchId)` → `Promise<Sketch>`
+- `getCuration(curationId)` → `Promise<Curation>`
+
+**List Endpoints** (return `{ data, hasMore }` structure):
+- All list methods return `Promise<{ data: T[], hasMore: boolean }>`
+- `hasMore` indicates whether more results are available beyond the current page
+- Parsed from response headers per FR-038
+
+**Special Endpoint**:
+- `getSketchCode(sketchId)` → `Promise<CodeFile[]>` (returns array directly, not paginated)
+
+---
+
+## Method Contracts
+
+### Single Entity Endpoints
+
+```typescript
+getUser(userId: number|string): Promise<User>
+getSketch(sketchId: number|string): Promise<Sketch>
+getCuration(curationId: number|string): Promise<Curation>
+```
+
+### List Endpoints
+
+```typescript
+getUserSketches(userId: number|string, options?: ListOptions): Promise<{ data: UserSketchItem[], hasMore: boolean }>
+getUserFollowers(userId: number|string, options?: ListOptions): Promise<{ data: UserFollowerItem[], hasMore: boolean }>
+getUserFollowing(userId: number|string, options?: ListOptions): Promise<{ data: UserFollowingItem[], hasMore: boolean }>
+getUserHearts(userId: number|string, options?: ListOptions): Promise<{ data: UserHeartItem[], hasMore: boolean }>
+getSketchForks(sketchId: number|string, options?: ListOptions): Promise<{ data: SketchForkItem[], hasMore: boolean }>
+getSketchHearts(sketchId: number|string, options?: ListOptions): Promise<{ data: SketchHeartItem[], hasMore: boolean }>
+getSketchFiles(sketchId: number|string, options?: ListOptions): Promise<{ data: SketchFile[], hasMore: boolean }>
+getSketchLibraries(sketchId: number|string, options?: ListOptions): Promise<{ data: Library[], hasMore: boolean }>
+getCurationSketches(curationId: number|string, options?: ListOptions): Promise<{ data: CurationSketchItem[], hasMore: boolean }>
+getTags(options?: TagsOptions): Promise<{ data: Tag[], hasMore: boolean }>
+```
+
+### Special Endpoint
+
+```typescript
+getSketchCode(sketchId: number|string): Promise<CodeFile[]>
+// Note: Returns array directly (not paginated per API docs)
+```
+
+---
+
+## Parameter Types
+
+### ListOptions
+
+```typescript
+{
+  limit?: number    // 1-100, default 20
+  offset?: number   // ≥0, default 0
+  sort?: "asc" | "desc"  // default "desc"
+}
+```
+
+### TagsOptions
+
+```typescript
+{
+  limit?: number    // 1-100, default 20
+  offset?: number   // ≥0, default 0
+  sort?: "asc" | "desc"  // default "desc"
+  duration?: "thisWeek" | "thisMonth" | "thisYear" | "anytime"  // default "anytime"
+}
+```
+
+**Note**: TagsOptions extends ListOptions with additional `duration` parameter. The `sort` parameter is not documented for the tags endpoint in the OpenProcessing API but it DOES function.
+
+---
+
+## Detailed Method Signatures
+
+### Class Constructor
 
 ```javascript
 /**
@@ -29,17 +110,17 @@ const authenticatedClient = new OpenProcessingClient('your-api-key');
 ```javascript
 /**
  * Get sketch metadata
- * @param {number} id - Sketch ID
+ * @param {number|string} sketchId - Sketch ID
  * @returns {Promise<Sketch>} Sketch metadata
  * @throws {Error} If sketch is not found, private, or API returns an error
  */
-async getSketch(id)
+async getSketch(sketchId)
 ```
 
 **Example**:
 ```javascript
 const sketch = await client.getSketch(123456);
-console.log(sketch.title, sketch.userName, sketch.hearts);
+console.log(sketch.title, sketch.userID, sketch.mode);
 ```
 
 ### getSketchCode
@@ -47,43 +128,46 @@ console.log(sketch.title, sketch.userName, sketch.hearts);
 ```javascript
 /**
  * Get sketch source code
- * @param {number} id - Sketch ID
- * @returns {Promise<CodeFile[]>} Array of code files with {title, code} structure
+ * @param {string} sketchId - Sketch ID
+ * @returns {Promise<CodeFile[]>} Array of code files
  * @throws {Error} If code is hidden or sketch is private
  */
-async getSketchCode(id)
+async getSketchCode(sketchId)
 ```
 
 **Example**:
 ```javascript
-const codeParts = await client.getSketchCode(123456);
+const codeParts = await client.getSketchCode("123456");
+// Returns array directly (NOT wrapped in { data, hasMore })
 codeParts.forEach(file => {
-  console.log(`File: ${file.title}`);
+  console.log(`File: ${file.title} (order: ${file.orderID})`);
   console.log(file.code);
 });
 ```
+
+**Note**: This endpoint returns a raw array, not the `{ data, hasMore }` structure used by other list endpoints, because the API docs indicate it's not paginated.
 
 ### getSketchFiles
 
 ```javascript
 /**
  * Get sketch asset files
- * @param {number} id - Sketch ID
+ * @param {string} sketchId - Sketch ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @param {number} [options.limit] - Maximum number of results
- * @param {number} [options.offset] - Number of results to skip
- * @param {'asc'|'desc'} [options.sort] - Sort order
- * @returns {Promise<SketchFile[]>} Array of asset files
+ * @returns {Promise<{data: SketchFile[], hasMore: boolean}>} Files and pagination info
  */
-async getSketchFiles(id, options = {})
+async getSketchFiles(sketchId, options = {})
 ```
 
 **Example**:
 ```javascript
-const files = await client.getSketchFiles(123456, { limit: 10 });
-files.forEach(file => {
-  console.log(`${file.filename} (${file.size} bytes) - ${file.url}`);
+const result = await client.getSketchFiles("123456", { limit: 10 });
+result.data.forEach(file => {
+  console.log(`${file.name} (${file.size} bytes) - ${file.url}`);
 });
+if (result.hasMore) {
+  console.log("More files available");
+}
 ```
 
 ### getSketchLibraries
@@ -91,18 +175,18 @@ files.forEach(file => {
 ```javascript
 /**
  * Get sketch libraries
- * @param {number} id - Sketch ID
+ * @param {string} sketchId - Sketch ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<Library[]>} Array of libraries
+ * @returns {Promise<{data: Library[], hasMore: boolean}>} Libraries and pagination info
  */
-async getSketchLibraries(id, options = {})
+async getSketchLibraries(sketchId, options = {})
 ```
 
 **Example**:
 ```javascript
-const libraries = await client.getSketchLibraries(123456);
-libraries.forEach(lib => {
-  console.log(`${lib.name} ${lib.version} - ${lib.url}`);
+const result = await client.getSketchLibraries("123456");
+result.data.forEach(lib => {
+  console.log(`Library ${lib.libraryID}: ${lib.url}`);
 });
 ```
 
@@ -111,17 +195,20 @@ libraries.forEach(lib => {
 ```javascript
 /**
  * Get sketch forks
- * @param {number} id - Sketch ID
+ * @param {string} sketchId - Sketch ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<SketchForkItem[]>} Array of fork sketches
+ * @returns {Promise<{data: SketchForkItem[], hasMore: boolean}>} Forks and pagination info
  */
-async getSketchForks(id, options = {})
+async getSketchForks(sketchId, options = {})
 ```
 
 **Example**:
 ```javascript
-const forks = await client.getSketchForks(123456, { limit: 20, sort: 'desc' });
-console.log(`Found ${forks.length} forks`);
+const result = await client.getSketchForks("123456", { limit: 20, sort: 'desc' });
+console.log(`Found ${result.data.length} forks`);
+if (result.hasMore) {
+  // Can fetch more with increased offset
+}
 ```
 
 ### getSketchHearts
@@ -129,18 +216,18 @@ console.log(`Found ${forks.length} forks`);
 ```javascript
 /**
  * Get users who hearted a sketch
- * @param {number} id - Sketch ID
+ * @param {string} sketchId - Sketch ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<SketchHeartItem[]>} Array of users who hearted
+ * @returns {Promise<{data: SketchHeartItem[], hasMore: boolean}>} Hearts and pagination info
  */
-async getSketchHearts(id, options = {})
+async getSketchHearts(sketchId, options = {})
 ```
 
 **Example**:
 ```javascript
-const hearts = await client.getSketchHearts(123456);
-hearts.forEach(heart => {
-  console.log(`${heart.username} hearted on ${heart.heartedOn}`);
+const result = await client.getSketchHearts("123456");
+result.data.forEach(heart => {
+  console.log(`${heart.fullname} hearted on ${heart.createdOn}`);
 });
 ```
 
@@ -151,19 +238,17 @@ hearts.forEach(heart => {
 ```javascript
 /**
  * Get user information
- * @param {number|string} id - User ID or username
+ * @param {string} userId - User ID
  * @returns {Promise<User>} User information
  * @throws {Error} If user is not found or API returns an error
  */
-async getUser(id)
+async getUser(userId)
 ```
 
 **Example**:
 ```javascript
-const user = await client.getUser(12345);
-// or by username
-const userByName = await client.getUser('username');
-console.log(user.username, user.sketchCount, user.followerCount);
+const user = await client.getUser("1");
+console.log(user.fullname, user.bio, user.memberSince);
 ```
 
 ### getUserSketches
@@ -171,18 +256,18 @@ console.log(user.username, user.sketchCount, user.followerCount);
 ```javascript
 /**
  * Get user sketches
- * @param {number|string} id - User ID or username
+ * @param {string} userId - User ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<UserSketchItem[]>} Array of user sketches
+ * @returns {Promise<{data: UserSketchItem[], hasMore: boolean}>} Sketches and pagination info
  */
-async getUserSketches(id, options = {})
+async getUserSketches(userId, options = {})
 ```
 
 **Example**:
 ```javascript
-const sketches = await client.getUserSketches('username', { limit: 50, offset: 0 });
-sketches.forEach(sketch => {
-  console.log(`${sketch.title} - ${sketch.hearts} hearts, ${sketch.views} views`);
+const result = await client.getUserSketches("1", { limit: 50, offset: 0 });
+result.data.forEach(sketch => {
+  console.log(`${sketch.visualID}: ${sketch.title}`);
 });
 ```
 
@@ -191,17 +276,20 @@ sketches.forEach(sketch => {
 ```javascript
 /**
  * Get user followers
- * @param {number|string} id - User ID or username
+ * @param {string} userId - User ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<UserFollowerItem[]>} Array of followers
+ * @returns {Promise<{data: UserFollowerItem[], hasMore: boolean}>} Followers and pagination info
  */
-async getUserFollowers(id, options = {})
+async getUserFollowers(userId, options = {})
 ```
 
 **Example**:
 ```javascript
-const followers = await client.getUserFollowers('username');
-console.log(`${followers.length} followers`);
+const result = await client.getUserFollowers("1");
+console.log(`${result.data.length} followers`);
+if (result.hasMore) {
+  // More followers available
+}
 ```
 
 ### getUserFollowing
@@ -209,17 +297,17 @@ console.log(`${followers.length} followers`);
 ```javascript
 /**
  * Get users being followed
- * @param {number|string} id - User ID or username
+ * @param {string} userId - User ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<UserFollowingItem[]>} Array of users being followed
+ * @returns {Promise<{data: UserFollowingItem[], hasMore: boolean}>} Following and pagination info
  */
-async getUserFollowing(id, options = {})
+async getUserFollowing(userId, options = {})
 ```
 
 **Example**:
 ```javascript
-const following = await client.getUserFollowing(12345);
-console.log(`Following ${following.length} users`);
+const result = await client.getUserFollowing("1");
+console.log(`Following ${result.data.length} users`);
 ```
 
 ### getUserHearts
@@ -227,18 +315,18 @@ console.log(`Following ${following.length} users`);
 ```javascript
 /**
  * Get sketches hearted by user
- * @param {number|string} id - User ID or username
+ * @param {string} userId - User ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<UserHeartItem[]>} Array of hearted sketches
+ * @returns {Promise<{data: UserHeartItem[], hasMore: boolean}>} Hearts and pagination info
  */
-async getUserHearts(id, options = {})
+async getUserHearts(userId, options = {})
 ```
 
 **Example**:
 ```javascript
-const hearts = await client.getUserHearts('username', { limit: 30 });
-hearts.forEach(heart => {
-  console.log(`Hearted: ${heart.title} by ${heart.userName}`);
+const result = await client.getUserHearts("1", { limit: 30 });
+result.data.forEach(heart => {
+  console.log(`Hearted: ${heart.title} (${heart.mode})`);
 });
 ```
 
@@ -249,36 +337,38 @@ hearts.forEach(heart => {
 ```javascript
 /**
  * Get curation metadata
- * @param {number} id - Curation ID
+ * @param {string} curationId - Curation ID
  * @returns {Promise<Curation>} Curation metadata
  * @throws {Error} If curation is not found or API returns an error
  */
-async getCuration(id)
+async getCuration(curationId)
 ```
 
 **Example**:
 ```javascript
-const curation = await client.getCuration(789);
-console.log(curation.title, curation.curatorName, curation.sketchCount);
+const curation = await client.getCuration("78544");
+console.log(curation.title, curation.userID, curation.collectionID);
 ```
+
+**Note**: API returns `collectionID` field, not `curationID`.
 
 ### getCurationSketches
 
 ```javascript
 /**
  * Get sketches in curation
- * @param {number} id - Curation ID
+ * @param {string} curationId - Curation ID
  * @param {ListOptions} [options] - Pagination and sorting options
- * @returns {Promise<CurationSketchItem[]>} Array of sketches in curation
+ * @returns {Promise<{data: CurationSketchItem[], hasMore: boolean}>} Sketches and pagination info
  */
-async getCurationSketches(id, options = {})
+async getCurationSketches(curationId, options = {})
 ```
 
 **Example**:
 ```javascript
-const sketches = await client.getCurationSketches(789);
-sketches.forEach(sketch => {
-  console.log(`${sketch.title} by ${sketch.userName} (added ${sketch.addedOn})`);
+const result = await client.getCurationSketches("78544");
+result.data.forEach(sketch => {
+  console.log(`${sketch.title} by ${sketch.fullname} (submitted ${sketch.submittedOn})`);
 });
 ```
 
@@ -290,18 +380,16 @@ sketches.forEach(sketch => {
 /**
  * Get popular tags
  * @param {TagsOptions} [options] - Tags query options
- * @param {'allTime'|'thisYear'|'thisMonth'|'thisWeek'|'today'} [options.duration='allTime'] - Time period
- * @param {number} [options.limit=20] - Maximum number of tags
- * @returns {Promise<Tag[]>} Array of popular tags
+ * @returns {Promise<{data: Tag[], hasMore: boolean}>} Tags and pagination info
  */
 async getTags(options = {})
 ```
 
 **Example**:
 ```javascript
-const popularTags = await client.getTags({ duration: 'thisWeek', limit: 10 });
-popularTags.forEach(tag => {
-  console.log(`${tag.tag}: ${tag.count} sketches`);
+const result = await client.getTags({ duration: 'thisWeek', limit: 10 });
+result.data.forEach(tag => {
+  console.log(`${tag.tag}: ${tag.quantity} sketches`);  // Note: quantity is a string
 });
 ```
 

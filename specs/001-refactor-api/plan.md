@@ -20,6 +20,7 @@ Refactor the OpenProcessing API architecture to provide complete coverage of all
 **Performance Goals**: API call latency must not increase >5% from current baseline, maintain existing download speed
 **Constraints**: No breaking changes to public API, maintain >90% test coverage, no new npm dependencies
 **Scale/Scope**: ~20 source files currently, refactoring to organized structure with 3 main directories (api/, download/, cli/)
+**API Pagination**: Response header parsing required for `hasMore` pagination indicator (from remediation CR-2)
 
 ## Constitution Check
 
@@ -160,6 +161,11 @@ All five constitution principles remain satisfied after design phase. The design
 4. Improved error handling and graceful degradation
 5. Comprehensive testing strategy
 
+**Post-Clarification Updates** (from remediation PM-1):
+Post-clarification updates (FR-038 through FR-041) added after initial constitution check. These additions strengthen alignment:
+- FR-038, FR-039, FR-040: Formalize API contracts (supports Principle I - 1:1 API mapping)
+- FR-041: Rate limit error handling (supports Principle IV - graceful degradation)
+
 **Ready to proceed to Phase 2 (Task Generation)**: No design changes required.
 
 ## Project Structure
@@ -182,6 +188,8 @@ specs/[###-feature]/
 src/
 ├── api/                    # API layer (NEW - organized)
 │   ├── client.js          # OpenProcessingClient class (1:1 API mapping)
+│   │                      # - Must extract hasMore boolean from response headers for all list endpoints
+│   │                      # - Return { data: response.data, hasMore: headers.hasMore || false } for list methods
 │   ├── validator.js       # Centralized validation functions
 │   └── types.js           # JSDoc type definitions for API entities
 │
