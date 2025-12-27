@@ -77,6 +77,7 @@ Code quality is maintained through comprehensive testing:
 - Test coverage target: >85% (monitored via `npm run test:coverage`)
 - Tests use realistic mock data from OpenProcessing API responses
 - Manual testing required for CLI output formatting and dev server features
+- Tests should NEVER log stderr, stdout, or other side effects during normal runs to avoid noisy outputs
 
 **Rationale:** Tests prevent regressions and document expected behavior. However, tests are not mandatory for every change (e.g., documentation, formatting) to avoid bureaucratic overhead.
 

@@ -100,7 +100,7 @@ describe('fetcher', () => {
           { url: 'https://lib.com/lib.js' },
         ]);
 
-      const result = await fetchSketchInfo(sketchId);
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
 
       expect(result).toBeDefined();
       expect(result.sketchId).toBe(sketchId);
@@ -147,7 +147,7 @@ describe('fetcher', () => {
         .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
         .reply(200, []);
 
-      const result = await fetchSketchInfo(sketchId);
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
 
       expect(result.available).toBe(false);
       expect(result.unavailableReason).toBe(VALIDATION_REASONS.CODE_HIDDEN);
@@ -164,7 +164,7 @@ describe('fetcher', () => {
           message: 'This is a private sketch.',
         });
 
-      const result = await fetchSketchInfo(sketchId);
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
 
       expect(result.available).toBe(false);
       expect(result.unavailableReason).toBe(VALIDATION_REASONS.PRIVATE);
@@ -217,7 +217,7 @@ describe('fetcher', () => {
         .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
         .reply(200, []);
 
-      const result = await fetchSketchInfo(sketchId);
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
 
       expect(result.isFork).toBe(true);
       expect(result.parent.sketchID).toBe(parentId);
@@ -281,7 +281,7 @@ describe('fetcher', () => {
         .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
         .reply(200, []);
 
-      const result = await fetchSketchInfo(sketchId);
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
 
       expect(result.isFork).toBe(false);
     });
@@ -317,7 +317,7 @@ describe('fetcher', () => {
           .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
           .reply(200, []);
 
-        const result = await fetchSketchInfo(sketchId);
+        const result = await fetchSketchInfo(sketchId, { quiet: true });
         expect(result.mode).toBe(mode);
       }
     });
