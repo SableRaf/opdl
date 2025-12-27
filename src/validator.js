@@ -291,12 +291,130 @@ const validateId = (id) => {
   };
 };
 
+/**
+ * Validate list options (limit, offset, sort)
+ * @param {Object} options - List options to validate
+ * @param {number} [options.limit] - Maximum results per page (1-100)
+ * @param {number} [options.offset] - Number of results to skip (>=0)
+ * @param {string} [options.sort] - Sort order ('asc' or 'desc')
+ * @returns {ValidationResult}
+ */
+const validateListOptions = (options = {}) => {
+  const { limit, offset, sort } = options;
+  const normalized = {};
+
+  // Validate limit (1-100)
+  if (limit !== undefined) {
+    const parsedLimit = Number(limit);
+    if (!Number.isFinite(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+      return {
+        valid: false,
+        reason: VALIDATION_REASONS.INVALID_ID,
+        message: 'Limit must be a number between 1 and 100',
+        data: options,
+        canRetry: false,
+      };
+    }
+    normalized.limit = parsedLimit;
+  } else {
+    normalized.limit = 20; // Default
+  }
+
+  // Validate offset (>=0)
+  if (offset !== undefined) {
+    const parsedOffset = Number(offset);
+    if (!Number.isFinite(parsedOffset) || parsedOffset < 0) {
+      return {
+        valid: false,
+        reason: VALIDATION_REASONS.INVALID_ID,
+        message: 'Offset must be a number >= 0',
+        data: options,
+        canRetry: false,
+      };
+    }
+    normalized.offset = parsedOffset;
+  } else {
+    normalized.offset = 0; // Default
+  }
+
+  // Validate sort ('asc' or 'desc')
+  if (sort !== undefined) {
+    if (sort !== 'asc' && sort !== 'desc') {
+      return {
+        valid: false,
+        reason: VALIDATION_REASONS.INVALID_ID,
+        message: 'Sort must be "asc" or "desc"',
+        data: options,
+        canRetry: false,
+      };
+    }
+    normalized.sort = sort;
+  } else {
+    normalized.sort = 'desc'; // Default
+  }
+
+  return {
+    valid: true,
+    reason: null,
+    message: '',
+    data: normalized,
+    canRetry: false,
+  };
+};
+
+/**
+ * Validate tags options
+ * @param {Object} options - Tags options to validate
+ * @param {number} [options.limit] - Maximum results (1-100)
+ * @param {number} [options.offset] - Number of results to skip (>=0)
+ * @param {string} [options.duration] - Time period ('thisWeek', 'thisMonth', 'thisYear', 'anytime')
+ * @returns {ValidationResult}
+ */
+const validateTagsOptions = (options = {}) => {
+  const { duration, ...listOptions } = options;
+
+  // First validate common list options (limit, offset)
+  const listValidation = validateListOptions(listOptions);
+  if (!listValidation.valid) {
+    return listValidation;
+  }
+
+  const normalized = { ...listValidation.data };
+
+  // Validate duration
+  const validDurations = ['thisWeek', 'thisMonth', 'thisYear', 'anytime'];
+  if (duration !== undefined) {
+    if (!validDurations.includes(duration)) {
+      return {
+        valid: false,
+        reason: VALIDATION_REASONS.INVALID_ID,
+        message: `Duration must be one of: ${validDurations.join(', ')}`,
+        data: options,
+        canRetry: false,
+      };
+    }
+    normalized.duration = duration;
+  } else {
+    normalized.duration = 'anytime'; // Default
+  }
+
+  return {
+    valid: true,
+    reason: null,
+    message: '',
+    data: normalized,
+    canRetry: false,
+  };
+};
+
 module.exports = {
   // Validation functions
   validateSketch,
   validateUser,
   validateCuration,
   validateId,
+  validateListOptions,
+  validateTagsOptions,
   validateResponse,
 
   // Helper functions

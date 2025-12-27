@@ -5,6 +5,8 @@ import {
   validateUser,
   validateCuration,
   validateId,
+  validateListOptions,
+  validateTagsOptions,
   validateResponse,
   isPrivateResponse,
   isCodeHidden,
@@ -494,6 +496,209 @@ describe('Validator Module', () => {
       const userResult = validateUser(userResponse);
       assert.equal(userResult.valid, true);
       // Note: Skipped sketches would be handled at a higher level
+    });
+  });
+
+  describe('validateListOptions', () => {
+    it('should validate correct list options', () => {
+      const options = { limit: 50, offset: 10, sort: 'asc' };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 50);
+      assert.equal(result.data.offset, 10);
+      assert.equal(result.data.sort, 'asc');
+    });
+
+    it('should apply defaults when options are undefined', () => {
+      const result = validateListOptions({});
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 20);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.sort, 'desc');
+    });
+
+    it('should apply defaults when no options provided', () => {
+      const result = validateListOptions();
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 20);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.sort, 'desc');
+    });
+
+    it('should reject limit below 1', () => {
+      const options = { limit: 0 };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+      assert.match(result.message, /Limit must be a number between 1 and 100/);
+    });
+
+    it('should reject limit above 100', () => {
+      const options = { limit: 101 };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+      assert.match(result.message, /Limit must be a number between 1 and 100/);
+    });
+
+    it('should reject non-numeric limit', () => {
+      const options = { limit: 'invalid' };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+    });
+
+    it('should reject negative offset', () => {
+      const options = { offset: -1 };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+      assert.match(result.message, /Offset must be a number >= 0/);
+    });
+
+    it('should accept offset of 0', () => {
+      const options = { offset: 0 };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.offset, 0);
+    });
+
+    it('should reject non-numeric offset', () => {
+      const options = { offset: 'invalid' };
+      const result = validateListOptions(options);
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+    });
+
+    it('should accept valid sort values', () => {
+      const ascResult = validateListOptions({ sort: 'asc' });
+      const descResult = validateListOptions({ sort: 'desc' });
+
+      assert.equal(ascResult.valid, true);
+      assert.equal(ascResult.data.sort, 'asc');
+      assert.equal(descResult.valid, true);
+      assert.equal(descResult.data.sort, 'desc');
+    });
+
+    it('should reject invalid sort values', () => {
+      const result = validateListOptions({ sort: 'invalid' });
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+      assert.match(result.message, /Sort must be "asc" or "desc"/);
+    });
+
+    it('should validate edge case limits', () => {
+      const min = validateListOptions({ limit: 1 });
+      const max = validateListOptions({ limit: 100 });
+
+      assert.equal(min.valid, true);
+      assert.equal(min.data.limit, 1);
+      assert.equal(max.valid, true);
+      assert.equal(max.data.limit, 100);
+    });
+
+    it('should preserve valid partial options', () => {
+      const result = validateListOptions({ limit: 30 });
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 30);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.sort, 'desc');
+    });
+  });
+
+  describe('validateTagsOptions', () => {
+    it('should validate correct tags options', () => {
+      const options = { limit: 50, offset: 10, duration: 'thisWeek' };
+      const result = validateTagsOptions(options);
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 50);
+      assert.equal(result.data.offset, 10);
+      assert.equal(result.data.duration, 'thisWeek');
+    });
+
+    it('should apply defaults when options are undefined', () => {
+      const result = validateTagsOptions({});
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 20);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.duration, 'anytime');
+    });
+
+    it('should apply defaults when no options provided', () => {
+      const result = validateTagsOptions();
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 20);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.duration, 'anytime');
+    });
+
+    it('should accept all valid duration values', () => {
+      const validDurations = ['thisWeek', 'thisMonth', 'thisYear', 'anytime'];
+
+      for (const duration of validDurations) {
+        const result = validateTagsOptions({ duration });
+        assert.equal(result.valid, true, `Should accept duration: ${duration}`);
+        assert.equal(result.data.duration, duration);
+      }
+    });
+
+    it('should reject invalid duration values', () => {
+      const result = validateTagsOptions({ duration: 'invalid' });
+
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+      assert.match(result.message, /Duration must be one of/);
+    });
+
+    it('should inherit list validation rules', () => {
+      const invalidLimit = validateTagsOptions({ limit: 0, duration: 'thisWeek' });
+      const invalidOffset = validateTagsOptions({ offset: -1, duration: 'thisWeek' });
+
+      assert.equal(invalidLimit.valid, false);
+      assert.equal(invalidOffset.valid, false);
+    });
+
+    it('should validate all parameters together', () => {
+      const result = validateTagsOptions({
+        limit: 25,
+        offset: 5,
+        duration: 'thisMonth',
+      });
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 25);
+      assert.equal(result.data.offset, 5);
+      assert.equal(result.data.duration, 'thisMonth');
+    });
+
+    it('should preserve valid partial options with duration', () => {
+      const result = validateTagsOptions({ duration: 'thisYear' });
+
+      assert.equal(result.valid, true);
+      assert.equal(result.data.limit, 20);
+      assert.equal(result.data.offset, 0);
+      assert.equal(result.data.duration, 'thisYear');
+    });
+
+    it('should fail when limit is invalid even with valid duration', () => {
+      const result = validateTagsOptions({ limit: 101, duration: 'thisWeek' });
+
+      assert.equal(result.valid, false);
+      assert.match(result.message, /Limit must be a number between 1 and 100/);
     });
   });
 });

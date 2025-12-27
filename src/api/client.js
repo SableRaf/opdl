@@ -25,6 +25,22 @@ class OpenProcessingClient {
       baseURL: 'https://openprocessing.org',
       headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
     });
+
+    // Add response interceptor for error handling
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 429) {
+          const enhancedError = new Error(
+            'Rate limit exceeded: 40 calls/minute. Implement retry logic or reduce request frequency.'
+          );
+          enhancedError.status = 429;
+          enhancedError.response = error.response;
+          throw enhancedError;
+        }
+        throw error;
+      }
+    );
   }
 
   /**
@@ -45,13 +61,20 @@ class OpenProcessingClient {
   }
 
   /**
-   * Get sketch code (legacy endpoint)
+   * Get sketch code
    * @param {number} id - Sketch ID
    * @returns {Promise<any>} Sketch code data
+   * @throws {Error} If code is hidden, sketch is private, or API returns an error
    */
   async getSketchCode(id) {
-    const response = await this.client.get(`/api/sketch/${id}/code`);
-    return response.data;
+    const response = await this.client.get(`/api/sketch/${id}/code`, { validateStatus: () => true });
+    const validation = validateSketch(response.data, { type: 'code' });
+
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+
+    return validation.data;
   }
 
   /**
@@ -81,6 +104,38 @@ class OpenProcessingClient {
    */
   async getSketchLibraries(id, options = {}) {
     const response = await this.client.get(`/api/sketch/${id}/libraries`, {
+      params: options,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get sketch forks
+   * @param {number} id - Sketch ID
+   * @param {Object} [options] - List options
+   * @param {number} [options.limit] - Maximum number of results
+   * @param {number} [options.offset] - Number of results to skip
+   * @param {'asc'|'desc'} [options.sort] - Sort order
+   * @returns {Promise<any[]>} Sketch forks
+   */
+  async getSketchForks(id, options = {}) {
+    const response = await this.client.get(`/api/sketch/${id}/forks`, {
+      params: options,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get users who hearted a sketch
+   * @param {number} id - Sketch ID
+   * @param {Object} [options] - List options
+   * @param {number} [options.limit] - Maximum number of results
+   * @param {number} [options.offset] - Number of results to skip
+   * @param {'asc'|'desc'} [options.sort] - Sort order
+   * @returns {Promise<any[]>} Users who hearted the sketch
+   */
+  async getSketchHearts(id, options = {}) {
+    const response = await this.client.get(`/api/sketch/${id}/hearts`, {
       params: options,
     });
     return response.data;
@@ -152,6 +207,22 @@ class OpenProcessingClient {
   }
 
   /**
+   * Get sketches hearted by user
+   * @param {number|string} userId - User ID
+   * @param {Object} [options] - List options
+   * @param {number} [options.limit] - Maximum number of results
+   * @param {number} [options.offset] - Number of results to skip
+   * @param {'asc'|'desc'} [options.sort] - Sort order
+   * @returns {Promise<any[]>} Hearted sketches
+   */
+  async getUserHearts(userId, options = {}) {
+    const response = await this.client.get(`/api/user/${userId}/hearts`, {
+      params: options,
+    });
+    return response.data;
+  }
+
+  /**
    * Get curation information
    * @param {number} id - Curation ID
    * @returns {Promise<any>} Curation data
@@ -179,6 +250,21 @@ class OpenProcessingClient {
    */
   async getCurationSketches(curationId, options = {}) {
     const response = await this.client.get(`/api/curation/${curationId}/sketches`, {
+      params: options,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get popular tags
+   * @param {Object} [options] - Tags options
+   * @param {number} [options.limit] - Maximum number of results
+   * @param {number} [options.offset] - Number of results to skip
+   * @param {'thisWeek'|'thisMonth'|'thisYear'|'anytime'} [options.duration] - Time period for tag popularity
+   * @returns {Promise<any[]>} Popular tags
+   */
+  async getTags(options = {}) {
+    const response = await this.client.get('/api/tags', {
       params: options,
     });
     return response.data;
