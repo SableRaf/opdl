@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import path from 'path';
-import { openBrowser, runViteServer, runSimpleHttpServer } from '../src/serverRunner.js';
+import { openBrowser, runViteServer, runSimpleHttpServer } from '../../src/download/serverRunner.js';
 
 describe('openBrowser', () => {
   it('does nothing when URL cannot be parsed', () => {

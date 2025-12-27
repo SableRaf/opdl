@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCommentBlock } from '../src/codeAttributor';
+import { buildCommentBlock } from '../../src/download/codeAttributor';
 
 describe('codeAttributor', () => {
   describe('buildCommentBlock', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { selectFields } from '../src/fieldSelector.js';
-import { fieldRegistry } from '../src/fieldRegistry.js';
+import { selectFields } from '../../src/cli/fieldSelector.js';
+import { fieldRegistry } from '../../src/cli/fieldRegistry.js';
 
 describe('Field Selector', () => {
   // Suppress console.warn during tests

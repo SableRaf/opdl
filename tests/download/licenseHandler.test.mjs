@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { createLicenseFile } from '../src/licenseHandler';
+import { createLicenseFile } from '../../src/download/licenseHandler';
 
 describe('licenseHandler', () => {
   const testDir = path.join(__dirname, 'test-license-output');

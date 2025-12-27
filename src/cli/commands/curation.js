@@ -1,7 +1,7 @@
-const { OpenProcessingClient } = require('../api/client');
+const { OpenProcessingClient } = require('../../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
-const { validateId } = require('../validator');
+const { validateId } = require('../../api/validator');
 
 /**
  * Handle curation-related commands

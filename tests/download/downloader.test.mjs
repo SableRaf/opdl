@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import nock from 'nock';
-import { downloadSketch } from '../src/downloader';
+import { downloadSketch } from '../../src/download/downloader';
 
 describe('downloader', () => {
   const testDir = path.join(__dirname, 'test-download-output');

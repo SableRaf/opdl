@@ -12,7 +12,7 @@ import {
   isCodeHidden,
   VALIDATION_REASONS,
   MESSAGES,
-} from '../src/validator.js';
+} from '../../src/api/validator.js';
 
 describe('Validator Module', () => {
   describe('isPrivateResponse', () => {

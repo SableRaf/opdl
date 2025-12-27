@@ -5,7 +5,7 @@ import {
   formatObject,
   formatArray,
   formatValue
-} from '../src/formatters.js';
+} from '../../src/cli/formatters.js';
 
 describe('Formatters', () => {
   describe('formatFieldList', () => {

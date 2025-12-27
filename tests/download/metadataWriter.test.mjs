@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { createOpMetadata } from '../src/metadataWriter';
+import { createOpMetadata } from '../../src/download/metadataWriter';
 
 describe('metadataWriter', () => {
   const testDir = path.join(__dirname, 'test-metadata-output');

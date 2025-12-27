@@ -5,7 +5,7 @@
  */
 
 const axios = require('axios');
-const { validateSketch, validateUser, validateCuration } = require('../validator');
+const { validateSketch, validateUser, validateCuration } = require('./validator');
 
 /**
  * @typedef {import('../types/api')} API

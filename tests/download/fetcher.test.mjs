@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import nock from 'nock';
-import { fetchSketchInfo, fetchUserInfo } from '../src/fetcher';
-import { VALIDATION_REASONS } from '../src/validator';
+import { fetchSketchInfo, fetchUserInfo } from '../../src/fetcher';
+import { VALIDATION_REASONS } from '../../src/api/validator';
 
 describe('fetcher', () => {
   beforeEach(() => {

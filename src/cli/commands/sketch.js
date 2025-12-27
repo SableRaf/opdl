@@ -1,8 +1,8 @@
-const { OpenProcessingClient } = require('../api/client');
+const { OpenProcessingClient } = require('../../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject } = require('../formatters');
-const { validateId } = require('../validator');
-const opdl = require('../index');
+const { validateId } = require('../../api/validator');
+const opdl = require('../../index');
 
 /**
  * Handle sketch-related commands

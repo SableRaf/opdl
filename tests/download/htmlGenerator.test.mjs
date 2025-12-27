@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { generateIndexHtml } from '../src/htmlGenerator';
+import { generateIndexHtml } from '../../src/download/htmlGenerator';
 
 describe('htmlGenerator', () => {
   const testDir = path.join(__dirname, 'test-html-output');

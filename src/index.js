@@ -1,5 +1,5 @@
 const { fetchSketchInfo } = require('./fetcher');
-const { downloadSketch } = require('./downloader');
+const { downloadSketch } = require('./download/downloader');
 
 const defaultOptions = {
   outputDir: null,

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } = require('./utils');
+const { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } = require('../utils');
 const { generateIndexHtml } = require('./htmlGenerator');
 const { buildCommentBlock } = require('./codeAttributor');
 const { createLicenseFile } = require('./licenseHandler');
