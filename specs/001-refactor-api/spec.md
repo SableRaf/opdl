@@ -123,8 +123,8 @@ As a developer adding new API features, I need all validation logic centralized 
 - How does backward compatibility work if fetcher.js is eventually removed?
 - What happens when validation fails for optional fields in API responses?
 - How does the system handle breaking changes in the OpenProcessing API in the future?
-- What happens when a list endpoint returns an empty array (user with 0 sketches, sketch with 0 libraries)? Client should return `{ data: [], hasMore: false }` with no errors. (M-1)
-- What happens when the client exceeds the OpenProcessing API rate limit (40 calls/minute)? Client should detect 429 errors, provide clear error message with retry-after guidance, but NOT implement automatic rate limiting (user responsibility). (H-6)
+- What happens when a list endpoint returns an empty array (user with 0 sketches, sketch with 0 libraries)? Client should return `{ data: [], hasMore: false }` with no errors.
+- What happens when the client exceeds the OpenProcessing API rate limit (40 calls/minute)? Client should detect 429 errors, provide clear error message with retry-after guidance, but NOT implement automatic rate limiting (user responsibility).
 
 ## Clarifications
 
@@ -147,8 +147,8 @@ As a developer adding new API features, I need all validation logic centralized 
 - **FR-004**: Client MUST implement `getSketchHearts(id, options)` for fetching users who hearted a sketch
 - **FR-005**: Client MUST implement `getTags(options)` for fetching popular tags with duration filtering
 - **FR-006**: Client MUST add validation to the existing `getSketchCode()` method
-- **FR-007**: All list endpoint methods MUST accept ListOptions (limit, offset, sort) parameters
-- **FR-008**: All list endpoint methods MUST validate options before making HTTP requests
+- **FR-007**: All list endpoint methods MUST accept ListOptions (limit, offset, sort) parameters (see FR-038 for return structure, FR-039 for parameter constraints)
+- **FR-008**: All list endpoint methods MUST validate options before making HTTP requests using validateListOptions() (see FR-009)
 - **FR-038**: All list endpoint methods MUST return an object with structure `{ data: Array, hasMore: boolean }` where `hasMore` is parsed from API response headers
 - **FR-039**: ListOptions MUST define: limit (number, range 1-100, default 20), offset (number, minimum 0, default 0), sort (enum "asc"|"desc", default "desc"), all parameters optional
 
@@ -193,7 +193,7 @@ As a developer adding new API features, I need all validation logic centralized 
 - **FR-036**: System MUST define TagsOptions type for tags endpoint parameters
 - **FR-037**: All client methods MUST have comprehensive JSDoc documentation with type information
 - **FR-040**: TagsOptions MUST define: duration (enum "thisWeek"|"thisMonth"|"thisYear"|"anytime", default "anytime"), plus standard ListOptions (limit, offset, sort), all parameters optional
-- **FR-041**: Client MUST detect HTTP 429 (Too Many Requests) errors and provide descriptive error messages indicating rate limit exceeded (40 calls/minute) with suggestion to implement retry logic or reduce request frequency
+- **FR-041**: Client.js axios error handler MUST detect HTTP 429 (Too Many Requests) status codes and throw descriptive error messages indicating rate limit exceeded (40 calls/minute) with suggestion to implement retry logic or reduce request frequency
 
 ### Key Entities
 

@@ -438,7 +438,7 @@ Fields that can be `null` (not "0", "null" as string, or missing):
 
 ## Type Definitions
 
-**Location**: `src/api/types.js`
+**Location**: `src/api/types.js` (after Phase 5 file organization; currently at `src/types/api.js`)
 
 All entity types will be defined as JSDoc typedefs following the format specified in the remediation plan:
 

@@ -132,10 +132,12 @@ This MVP delivers complete API coverage with centralized validation and eliminat
 - [ ] T028 [P] [US1] Write tests for getCurationSketches() in tests/api/client.test.mjs
 - [ ] T029 [P] [US1] Write tests for getTags() in tests/api/client.test.mjs
 - [ ] T030 [US1] Write tests for enhanced getSketchCode() validation in tests/api/client.test.mjs
+- [ ] T030a [US1] Write tests for HTTP 429 error handling in tests/api/client.test.mjs (mock 429 response, verify error message)
 
 ### Verification
 
 - [ ] T031 [US1] Run full client test suite and verify all 14 methods work (npm test -- tests/api/client.test.mjs)
+- [ ] T031a [US1] Add HTTP 429 rate limit error detection to client.js axios error handler with descriptive message ("Rate limit exceeded: 40 calls/minute. Implement retry logic or reduce request frequency.")
 - [ ] T032 [US1] Verify test coverage >90% for src/api/client.js (npm run test:coverage)
 
 **Phase Completion Criteria**:
@@ -175,7 +177,7 @@ This MVP delivers complete API coverage with centralized validation and eliminat
 
 ### Integration & Deprecation
 
-- [ ] T041 [US2] Update src/downloader.js to use DownloadService instead of fetchSketchInfo()
+- [ ] T041 [US2] Update src/downloader.js to use DownloadService instead of fetcher.js - replace fetchSketchInfo() import from fetcher.js with DownloadService.getCompleteSketchInfo(), update function calls, ensure identical return structure
 - [ ] T042 [US2] Create deprecation re-export in src/fetcher.js with console.warn()
 - [ ] T043 [US2] Verify no direct axios calls outside src/api/client.js (grep -r "axios\\." src/ | grep -v client.js)
 
@@ -443,21 +445,21 @@ T064 Update bin/opdl.js  (after all moves)
 
 ## Task Checklist Summary
 
-**Total Tasks**: 83
+**Total Tasks**: 85
 **Parallelizable**: 28 tasks marked [P]
-**Sequential**: 55 tasks
+**Sequential**: 57 tasks
 
 **By Phase**:
 - Phase 1 (Setup): 2 tasks
 - Phase 2 (Foundational): 12 tasks (8 parallelizable)
-- Phase 3 (US1): 18 tasks (14 parallelizable)
+- Phase 3 (US1): 20 tasks (14 parallelizable) - includes T030a, T031a
 - Phase 4 (US2): 13 tasks
 - Phase 5 (US3): 22 tasks (15 parallelizable)
 - Phase 6 (US4): 10 tasks
 - Phase 7 (Polish): 3 tasks
 
 **By User Story**:
-- US1 (Complete API Access): 18 tasks (Phase 3)
+- US1 (Complete API Access): 20 tasks (Phase 3) - includes rate limit error handling
 - US2 (Single Source of Truth): 13 tasks (Phase 4)
 - US3 (Clear Separation): 22 tasks (Phase 5)
 - US4 (Backward Compatibility): 10 tasks (Phase 6)
