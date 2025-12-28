@@ -86,6 +86,11 @@ Example:
 This could crash if the array is empty. Consider using `arr[0]` with a length check or `arr?.at(0)`.
 ```
 
+## Excluded Files and Directories
+
+Do NOT review changes in:
+- `.specify/**` - auto-generated files from speckit
+
 ## When to Stay Silent
 
 If you're uncertain whether something is an issue, don't comment. False positives create noise and reduce trust in the review process.
