@@ -81,7 +81,7 @@ class DownloadService {
 
       // 2. Fetch author info
       const author = await this.client.getUser(sketch.userID);
-      sketchInfo.author = author.fullname || author.username || `user_${sketch.userID}`;
+      sketchInfo.author = author.fullname || `user_${sketch.userID}`;
 
       // 3. Fetch code (handle hidden/private)
       try {
@@ -110,7 +110,7 @@ class DownloadService {
           const parentAuthor = await this.client.getUser(parent.userID);
           sketchInfo.parent = {
             sketchID: parent.visualID,
-            author: parentAuthor.fullname || parentAuthor.username || `user_${parent.userID}`,
+            author: parentAuthor.fullname || `user_${parent.userID}`,
             title: parent.title,
           };
         } catch (error) {

@@ -64,7 +64,7 @@ function selectFieldsFromObject(obj, fields) {
 /**
  * Get a nested value from an object using dot notation
  * @param {Object} obj - Source object
- * @param {string} path - Dot-separated path (e.g., 'user.username')
+ * @param {string} path - Dot-separated path (e.g., 'user.fullname')
  * @returns {*} The nested value
  */
 function getNestedValue(obj, path) {
@@ -74,7 +74,7 @@ function getNestedValue(obj, path) {
 /**
  * Set a nested value in an object using dot notation
  * @param {Object} obj - Target object
- * @param {string} path - Dot-separated path (e.g., 'user.username')
+ * @param {string} path - Dot-separated path (e.g., 'user.fullname')
  * @param {*} value - Value to set
  */
 function setNestedValue(obj, path, value) {

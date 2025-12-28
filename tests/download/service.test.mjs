@@ -44,7 +44,6 @@ describe('DownloadService', () => {
       mockClient.getUser = async (id) => ({
         userID: id,
         fullname: 'Test User',
-        username: 'testuser',
       });
 
       mockClient.getSketchCode = async () => [
@@ -86,9 +85,9 @@ describe('DownloadService', () => {
 
       mockClient.getUser = async (id) => {
         if (id === 456) {
-          return { fullname: 'Forker User', username: 'forker' };
+          return { fullname: 'Forker User' };
         } else {
-          return { fullname: 'Original User', username: 'original' };
+          return { fullname: 'Original User' };
         }
       };
 
@@ -226,7 +225,7 @@ describe('DownloadService', () => {
       assert.deepEqual(result.metadata, fullMetadata);
     });
 
-    it('should use username as fallback if fullname not available', async () => {
+    it('should use user_ID as fallback if fullname not available', async () => {
       mockClient.getSketch = async () => ({
         visualID: 123,
         title: 'Test',
@@ -236,28 +235,7 @@ describe('DownloadService', () => {
 
       mockClient.getUser = async () => ({
         userID: 456,
-        username: 'testuser',
         fullname: '',
-      });
-
-      mockClient.getSketchCode = async () => [];
-
-      service = new DownloadService(mockClient);
-      const result = await service.getCompleteSketchInfo(123);
-
-      assert.equal(result.author, 'testuser');
-    });
-
-    it('should use user_ID as fallback if no username available', async () => {
-      mockClient.getSketch = async () => ({
-        visualID: 123,
-        title: 'Test',
-        userID: 456,
-        mode: 'p5js',
-      });
-
-      mockClient.getUser = async () => ({
-        userID: 456,
       });
 
       mockClient.getSketchCode = async () => [];
@@ -267,6 +245,7 @@ describe('DownloadService', () => {
 
       assert.equal(result.author, 'user_456');
     });
+
 
     it('should fetch files and libraries in parallel', async () => {
       let filesCallTime;

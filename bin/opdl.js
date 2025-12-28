@@ -143,7 +143,7 @@ EXAMPLES:
   opdl 1142958 --run
 
   # User operations
-  opdl user 1 --info fullname,website,memberSince
+  opdl user 1 --info fullname,website,createdOn
   opdl user sketches 1 --limit 10 --info visualID,title
   opdl user followers 1 --json
 

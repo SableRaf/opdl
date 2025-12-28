@@ -194,7 +194,7 @@ describe('OpenProcessingClient', () => {
       assert.deepEqual(result, mockFollowers);
     });
 
-    it('should handle username instead of ID', async () => {
+    it('should handle fullname instead of ID', async () => {
       nock(BASE_URL)
         .get('/api/user/testuser/followers')
         .reply(200, []);

@@ -42,7 +42,7 @@ describe('Formatters', () => {
     it('should pad field names correctly', () => {
       const fields = [
         { name: 'id', description: 'ID', type: 'number' },
-        { name: 'username', description: 'Username', type: 'string' }
+        { name: 'fullname', description: 'Full name', type: 'string' }
       ];
 
       const result = formatFieldList(fields);
@@ -122,13 +122,13 @@ describe('Formatters', () => {
     it('should handle nested objects', () => {
       const data = {
         title: 'My Sketch',
-        user: { userID: 1, username: 'testuser' }
+        user: { userID: 1, fullname: 'Test User' }
       };
 
       const result = formatObject(data);
 
       expect(result).toContain('title: My Sketch');
-      expect(result).toContain('user: {"userID":1,"username":"testuser"}');
+      expect(result).toContain('user: {"userID":1,"fullname":"Test User"}');
     });
 
     it('should handle null and undefined values', () => {

@@ -141,21 +141,20 @@ describe('Field Selector', () => {
         title: 'My Item',
         user: {
           userID: 1,
-          username: 'testuser',
           fullname: 'Test User'
         }
       };
 
       // Use unknown field set to bypass validation
       const result = selectFields(data, {
-        fields: 'id,user.username',
+        fields: 'id,user.fullname',
         fieldSetName: 'unknown'
       });
 
       expect(result).toEqual({
         id: 1,
         user: {
-          username: 'testuser'
+          fullname: 'Test User'
         }
       });
     });
@@ -193,7 +192,7 @@ describe('Field Selector', () => {
       const data = {
         id: 1,
         user: {
-          username: 'test'
+          fullname: 'test'
         }
       };
 
@@ -270,24 +269,24 @@ describe('Field Selector', () => {
         {
           id: 1,
           title: 'Item 1',
-          user: { username: 'user1' }
+          user: { fullname: 'User One' }
         },
         {
           id: 2,
           title: 'Item 2',
-          user: { username: 'user2' }
+          user: { fullname: 'User Two' }
         }
       ];
 
       // Use unknown field set to bypass validation
       const result = selectFields(data, {
-        fields: 'id,user.username',
+        fields: 'id,user.fullname',
         fieldSetName: 'unknown'
       });
 
       expect(result).toEqual([
-        { id: 1, user: { username: 'user1' } },
-        { id: 2, user: { username: 'user2' } }
+        { id: 1, user: { fullname: 'User One' } },
+        { id: 2, user: { fullname: 'User Two' } }
       ]);
     });
 

@@ -261,7 +261,6 @@ describe('Validator Module', () => {
     it('should validate valid user response', () => {
       const response = {
         id: 123,
-        username: 'testuser',
         fullname: 'Test User',
       };
       const result = validateUser(response);
@@ -490,7 +489,6 @@ describe('Validator Module', () => {
     it('should handle user with some sketches skipped', () => {
       const userResponse = {
         id: 123,
-        username: 'testuser',
         fullname: 'Test User',
       };
       const userResult = validateUser(userResponse);

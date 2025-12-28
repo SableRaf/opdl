@@ -34,13 +34,11 @@
 /**
  * @typedef {Object} User
  * @property {string} userID - User ID
- * @property {string} username - Username
  * @property {string} fullname - User's full name
  * @property {string} website - User's website URL
  * @property {string} location - User's location
- * @property {string} memberSince - Member since date (ISO 8601)
+ * @property {string} createdOn - Member since date (ISO 8601)
  * @property {string} bio - User biography
- * @property {string} [avatarUrl] - Avatar image URL
  */
 
 /**
@@ -68,7 +66,6 @@
  * @property {string} userID - User ID
  * @property {string} fullname - User's full name
  * @property {string} followedOn - Date when follow occurred (ISO 8601)
- * @property {string} [avatarUrl] - Avatar image URL
  */
 
 /**
@@ -76,7 +73,6 @@
  * @property {string} userID - User ID
  * @property {string} fullname - User's full name
  * @property {string} followedOn - Date when follow occurred (ISO 8601)
- * @property {string} [avatarUrl] - Avatar image URL
  */
 
 /**
