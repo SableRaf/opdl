@@ -2,11 +2,11 @@
 
 const path = require('path');
 const { version } = require(path.join(__dirname, '..', 'package.json'));
-const { parseArgs } = require(path.join(__dirname, '..', 'src', 'cli.js'));
-const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'fields.js'));
-const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'sketch.js'));
-const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'user.js'));
-const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'commands', 'curation.js'));
+const { parseArgs } = require(path.join(__dirname, '..', 'src', 'cli', 'index.js'));
+const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'fields.js'));
+const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'sketch.js'));
+const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'user.js'));
+const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'curation.js'));
 
 /**
  * Main CLI entry point

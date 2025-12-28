@@ -74,6 +74,8 @@ See the [documentation](HELP.md) file for a full list of CLI options and flags.
 
 ### Programmatic API
 
+**Simple Download:**
+
 ```javascript
 const opdl = require('opdl');
 
@@ -88,6 +90,47 @@ const opdl = require('opdl');
   }
 })();
 ```
+
+**Direct API Client Access:**
+
+```javascript
+const { OpenProcessingClient } = require('opdl');
+
+(async () => {
+  const client = new OpenProcessingClient();
+
+  // Get sketch details
+  const sketch = await client.getSketch(2063664);
+  console.log(`${sketch.title} by userID ${sketch.userID}`);
+
+  // Get user information
+  const user = await client.getUser(sketch.userID);
+  console.log(`Author: ${user.userName}`);
+
+  // Get sketch code
+  const code = await client.getSketchCode(2063664);
+  console.log(`Code files:`, code.files.map(f => f.name));
+
+  // List user's sketches with pagination
+  const userSketches = await client.getUserSketches(sketch.userID, {
+    limit: 10,
+    offset: 0,
+    sort: 'desc'
+  });
+
+  // Get popular tags
+  const tags = await client.getTags({ duration: 'thisMonth' });
+})();
+```
+
+**Available API Methods:**
+
+- **Sketch**: `getSketch(id)`, `getSketchCode(id)`, `getSketchFiles(id)`, `getSketchLibraries(id)`, `getSketchForks(id, options)`, `getSketchHearts(id, options)`
+- **User**: `getUser(id)`, `getUserSketches(id, options)`, `getUserFollowers(id, options)`, `getUserFollowing(id, options)`, `getUserHearts(id, options)`
+- **Curation**: `getCuration(id)`, `getCurationSketches(id, options)`
+- **Tags**: `getTags(options)`
+
+All list methods accept optional `options` parameter with `limit` (1-100), `offset` (>=0), and `sort` ('asc'|'desc').
 
 ## Options
 
@@ -123,6 +166,7 @@ sketch_{id}/
 - Private sketches and sketches with hidden code abort the download and populate `sketchInfo.error` with details.
 - Network or file-system errors populate `sketchInfo.error` while still returning a structured result.
 - Asset-download failures are logged (unless `quiet: true`) but do not abort the operation.
+- **Rate Limiting**: The OpenProcessing API has a rate limit of 40 calls per minute. When exceeded, you'll receive a descriptive error message with retry guidance.
 
 ## Attribution
 

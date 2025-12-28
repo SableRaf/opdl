@@ -7,6 +7,7 @@ Complete command reference and documentation for opdl.
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Programmatic API](#programmatic-api)
 - [Commands](#commands)
   - [Field Discovery](#field-discovery)
   - [Sketch Commands](#sketch-commands)
@@ -64,6 +65,127 @@ opdl user sketches 12345
 
 # Output as JSON
 opdl user 12345 --json
+```
+
+## Programmatic API
+
+In addition to the CLI, `opdl` can be used as a library in your Node.js projects.
+
+### Simple Download
+
+```javascript
+const opdl = require('opdl');
+
+(async () => {
+  const result = await opdl('2063664', {
+    outputDir: './sketches',
+    quiet: true
+  });
+
+  if (result.success) {
+    console.log(`Downloaded: ${result.sketchInfo.title}`);
+  } else {
+    console.error(`Error: ${result.sketchInfo.error}`);
+  }
+})();
+```
+
+### OpenProcessing API Client
+
+For direct access to the OpenProcessing API, use the `OpenProcessingClient` class:
+
+```javascript
+const { OpenProcessingClient } = require('opdl');
+
+(async () => {
+  const client = new OpenProcessingClient();
+  // Or with API key: new OpenProcessingClient('your-api-key')
+
+  // Get sketch details
+  const sketch = await client.getSketch(2063664);
+  console.log(`${sketch.title} by ${sketch.userID}`);
+
+  // Get user information
+  const user = await client.getUser(sketch.userID);
+  console.log(`Author: ${user.userName}`);
+
+  // Get sketch code
+  const code = await client.getSketchCode(2063664);
+  console.log('Files:', code.files.map(f => f.name));
+
+  // List user's sketches with pagination
+  const sketches = await client.getUserSketches(sketch.userID, {
+    limit: 10,
+    offset: 0,
+    sort: 'desc'
+  });
+
+  // Get popular tags
+  const tags = await client.getTags({ duration: 'thisMonth' });
+})();
+```
+
+### API Client Methods
+
+**Sketch Methods:**
+- `getSketch(id)` - Get sketch metadata
+- `getSketchCode(id)` - Get sketch code files
+- `getSketchFiles(id)` - Get sketch asset files
+- `getSketchLibraries(id)` - Get sketch libraries
+- `getSketchForks(id, options?)` - Get sketch forks (with pagination)
+- `getSketchHearts(id, options?)` - Get users who hearted the sketch (with pagination)
+
+**User Methods:**
+- `getUser(id)` - Get user profile
+- `getUserSketches(id, options?)` - Get user's sketches (with pagination)
+- `getUserFollowers(id, options?)` - Get user's followers (with pagination)
+- `getUserFollowing(id, options?)` - Get users being followed (with pagination)
+- `getUserHearts(id, options?)` - Get sketches hearted by user (with pagination)
+
+**Curation Methods:**
+- `getCuration(id)` - Get curation metadata
+- `getCurationSketches(id, options?)` - Get sketches in curation (with pagination)
+
+**Tag Methods:**
+- `getTags(options?)` - Get popular tags by duration ('thisWeek', 'thisMonth', 'thisYear', 'anytime')
+
+**Pagination Options:**
+All list methods accept an optional `options` parameter:
+- `limit` - Number of results (1-100, default: 20)
+- `offset` - Number of results to skip (default: 0)
+- `sort` - Sort order ('asc' or 'desc', default: 'desc')
+
+**Error Handling:**
+```javascript
+try {
+  const sketch = await client.getSketch(123);
+} catch (error) {
+  if (error.status === 429) {
+    console.error('Rate limit exceeded: 40 calls/minute');
+  } else if (error.status === 404) {
+    console.error('Sketch not found');
+  } else {
+    console.error('API error:', error.message);
+  }
+}
+```
+
+**Rate Limiting:**
+The OpenProcessing API has a rate limit of 40 calls per minute. When exceeded, the client will throw an error with status 429 and a descriptive message including retry guidance.
+
+### Download Service
+
+For advanced download workflows, use the `DownloadService`:
+
+```javascript
+const { OpenProcessingClient } = require('opdl');
+const { DownloadService } = require('opdl/src/download/service');
+
+const client = new OpenProcessingClient();
+const service = new DownloadService(client);
+
+const sketchInfo = await service.getCompleteSketchInfo(2063664);
+console.log('Complete info:', sketchInfo);
 ```
 
 ## Commands
@@ -776,6 +898,7 @@ npm install -g opdl
 - Check your internet connection
 - Verify the entity ID exists (sketch, user, or curation)
 - If using API key, ensure `OP_API_KEY` is set correctly
+- **Rate Limit (HTTP 429)**: The OpenProcessing API limits requests to 40 calls per minute. If you exceed this limit, wait 60 seconds before retrying. Consider adding delays between requests in scripts.
 
 ### Permission errors
 

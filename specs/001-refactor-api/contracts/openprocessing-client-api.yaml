@@ -1,0 +1,727 @@
+openapi: 3.0.3
+info:
+  title: OpenProcessing Client API
+  description: |
+    Internal API contract for the OpenProcessingClient class.
+    This documents the methods exposed by the client for interacting with the OpenProcessing API.
+
+    The client provides 1:1 mapping to OpenProcessing REST API endpoints with centralized
+    validation and error handling.
+  version: 0.5.0
+  contact:
+    name: opdl
+    url: https://github.com/SableRaf/opdl
+
+servers:
+  - url: https://openprocessing.org
+    description: OpenProcessing production API
+
+paths:
+  # Sketch Endpoints
+  /api/sketch/{id}:
+    get:
+      summary: Get sketch metadata
+      operationId: getSketch
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+      responses:
+        '200':
+          description: Sketch metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sketch'
+        '404':
+          description: Sketch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Private sketch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sketch/{id}/code:
+    get:
+      summary: Get sketch source code
+      operationId: getSketchCode
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+      responses:
+        '200':
+          description: Sketch code files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CodeFile'
+        '403':
+          description: Code is hidden or sketch is private
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sketch/{id}/files:
+    get:
+      summary: Get sketch asset files
+      operationId: getSketchFiles
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of asset files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SketchFile'
+
+  /api/sketch/{id}/libraries:
+    get:
+      summary: Get sketch libraries
+      operationId: getSketchLibraries
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of libraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Library'
+
+  /api/sketch/{id}/forks:
+    get:
+      summary: Get sketch forks
+      operationId: getSketchForks
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of forks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SketchForkItem'
+
+  /api/sketch/{id}/hearts:
+    get:
+      summary: Get users who hearted a sketch
+      operationId: getSketchHearts
+      tags:
+        - Sketch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sketch ID
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of users who hearted
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SketchHeartItem'
+
+  # User Endpoints
+  /api/user/{id}:
+    get:
+      summary: Get user information
+      operationId: getUser
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: User ID or username
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user/{id}/sketches:
+    get:
+      summary: Get user sketches
+      operationId: getUserSketches
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: User ID or username
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of user sketches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSketchItem'
+
+  /api/user/{id}/followers:
+    get:
+      summary: Get user followers
+      operationId: getUserFollowers
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: User ID or username
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of followers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserFollowerItem'
+
+  /api/user/{id}/following:
+    get:
+      summary: Get users being followed
+      operationId: getUserFollowing
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: User ID or username
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of users being followed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserFollowingItem'
+
+  /api/user/{id}/hearts:
+    get:
+      summary: Get sketches hearted by user
+      operationId: getUserHearts
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: User ID or username
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of hearted sketches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserHeartItem'
+
+  # Curation Endpoints
+  /api/curation/{id}:
+    get:
+      summary: Get curation metadata
+      operationId: getCuration
+      tags:
+        - Curation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Curation ID
+      responses:
+        '200':
+          description: Curation metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Curation'
+        '404':
+          description: Curation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/curation/{id}/sketches:
+    get:
+      summary: Get sketches in curation
+      operationId: getCurationSketches
+      tags:
+        - Curation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Curation ID
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: List of sketches in curation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CurationSketchItem'
+
+  # Tags Endpoint
+  /api/tags:
+    get:
+      summary: Get popular tags
+      operationId: getTags
+      tags:
+        - Tags
+      parameters:
+        - name: duration
+          in: query
+          schema:
+            type: string
+            enum: [allTime, thisYear, thisMonth, thisWeek, today]
+            default: allTime
+          description: Time period for popular tags
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of tags to return
+      responses:
+        '200':
+          description: List of popular tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+
+components:
+  parameters:
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+      description: Maximum number of results to return
+
+    OffsetParam:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Number of results to skip
+
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+      description: Sort order
+
+  schemas:
+    # Full Entities
+    Sketch:
+      type: object
+      required:
+        - visualID
+        - title
+        - userId
+        - userName
+      properties:
+        visualID:
+          type: integer
+          description: Unique sketch identifier
+        title:
+          type: string
+          description: Sketch title
+        description:
+          type: string
+          description: Sketch description
+        instructions:
+          type: string
+          description: Usage instructions
+        userId:
+          type: integer
+          description: Author's user ID
+        userName:
+          type: string
+          description: Author's username
+        createdOn:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        license:
+          type: string
+          description: License type
+        mode:
+          type: string
+          description: Processing mode (p5js, processingjs, etc.)
+        isDraft:
+          type: boolean
+          description: Whether sketch is a draft
+        isPrivate:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: Privacy level (0=public, 1=private, 2=classOnly, 3=profOnly)
+        parentVisualId:
+          type: integer
+          nullable: true
+          description: Parent sketch ID if this is a fork
+        views:
+          type: integer
+          description: View count
+        hearts:
+          type: integer
+          description: Heart count
+        forks:
+          type: integer
+          description: Fork count
+        tags:
+          type: array
+          items:
+            type: string
+          description: Array of tag strings
+
+    User:
+      type: object
+      required:
+        - userId
+        - username
+      properties:
+        userId:
+          type: integer
+          description: Unique user identifier
+        username:
+          type: string
+          description: User's display name
+        firstName:
+          type: string
+        lastName:
+          type: string
+        location:
+          type: string
+        about:
+          type: string
+        website:
+          type: string
+        createdOn:
+          type: string
+          format: date-time
+        sketchCount:
+          type: integer
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+        heartCount:
+          type: integer
+
+    Curation:
+      type: object
+      required:
+        - curationId
+        - title
+      properties:
+        curationId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        curatorId:
+          type: integer
+        curatorName:
+          type: string
+        createdOn:
+          type: string
+          format: date-time
+        sketchCount:
+          type: integer
+        isPublic:
+          type: boolean
+
+    CodeFile:
+      type: object
+      required:
+        - title
+        - code
+      properties:
+        title:
+          type: string
+          description: File name (e.g., "sketch.js")
+        code:
+          type: string
+          description: Source code content
+
+    Tag:
+      type: object
+      required:
+        - tag
+        - count
+      properties:
+        tag:
+          type: string
+        count:
+          type: integer
+
+    # List Items
+    UserSketchItem:
+      type: object
+      properties:
+        visualID:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        createdOn:
+          type: string
+          format: date-time
+        views:
+          type: integer
+        hearts:
+          type: integer
+        forks:
+          type: integer
+        isDraft:
+          type: boolean
+
+    UserFollowerItem:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        location:
+          type: string
+        sketchCount:
+          type: integer
+
+    UserFollowingItem:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        location:
+          type: string
+        sketchCount:
+          type: integer
+
+    UserHeartItem:
+      type: object
+      properties:
+        visualID:
+          type: integer
+        title:
+          type: string
+        userName:
+          type: string
+        userId:
+          type: integer
+        createdOn:
+          type: string
+          format: date-time
+        hearts:
+          type: integer
+
+    SketchFile:
+      type: object
+      properties:
+        filename:
+          type: string
+        url:
+          type: string
+          format: uri
+        size:
+          type: integer
+        uploadedOn:
+          type: string
+          format: date-time
+
+    Library:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        version:
+          type: string
+
+    SketchForkItem:
+      type: object
+      properties:
+        visualID:
+          type: integer
+        title:
+          type: string
+        userName:
+          type: string
+        userId:
+          type: integer
+        createdOn:
+          type: string
+          format: date-time
+
+    SketchHeartItem:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        heartedOn:
+          type: string
+          format: date-time
+
+    CurationSketchItem:
+      type: object
+      properties:
+        visualID:
+          type: integer
+        title:
+          type: string
+        userName:
+          type: string
+        userId:
+          type: integer
+        addedOn:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Sketch not found."

@@ -1,5 +1,6 @@
 const { fetchSketchInfo } = require('./fetcher');
-const { downloadSketch } = require('./downloader');
+const { downloadSketch } = require('./download/downloader');
+const { OpenProcessingClient } = require('./api/client');
 
 const defaultOptions = {
   outputDir: null,
@@ -69,3 +70,5 @@ const opdl = async (sketchId, options = {}) => {
 };
 
 module.exports = opdl;
+module.exports.OpenProcessingClient = OpenProcessingClient;
+module.exports.downloadSketch = downloadSketch;

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { OpenProcessingClient } from '../src/api/client';
-import { fieldRegistry } from '../src/fieldRegistry';
+import { fieldRegistry } from '../src/cli/fieldRegistry';
 
 // Helper to get actual fields from API response
 function getFieldsFromResponse(data) {
