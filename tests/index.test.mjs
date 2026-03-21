@@ -324,7 +324,7 @@ describe('opdl (integration)', () => {
       .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
       .reply(200, []);
 
-    nock('https://openprocessing-usercontent.s3.amazonaws.com')
+    nock('https://kyoko.openprocessing.org')
       .get('/thumbnails/visualThumbnail999@2x.jpg')
       .reply(200, Buffer.from('thumbnail'));
 
