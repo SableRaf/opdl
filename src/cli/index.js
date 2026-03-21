@@ -25,6 +25,7 @@
  * @property {boolean} [options.createOpMetadata] - Create OP metadata file
  * @property {boolean} [options.vite] - Set up Vite project structure
  * @property {boolean} [options.run] - Automatically run dev server after scaffolding
+ * @property {boolean} [options.verbose] - Print detailed download info and error diagnostics
  */
 
 /**
@@ -165,6 +166,7 @@ function parseOptions(args) {
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
     else if (arg === '--vite') options.vite = true;
     else if (arg === '--run') options.run = true;
+    else if (arg === '--verbose') options.verbose = true;
     // Value flags with = syntax
     else if (arg.startsWith('--token=')) {
       options.token = arg.split('=')[1];

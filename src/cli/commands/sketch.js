@@ -47,6 +47,7 @@ async function handleSketchCommand(args) {
       createLicenseFile: true,
       createOpMetadata: true,
       quiet: args.options.quiet || false,
+      verbose: args.options.verbose || false,
       vite: args.options.vite || false,
       run: args.options.run || false,
     };
