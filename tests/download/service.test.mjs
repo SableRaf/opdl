@@ -129,7 +129,7 @@ describe('DownloadService', () => {
 
     it('should handle private sketches', async () => {
       mockClient.getSketch = async () => {
-        throw new Error('This sketch is private and cannot be downloaded.');
+        throw new Error('This sketch is private and cannot be downloaded without the creator\'s authentication token.');
       };
 
       service = new DownloadService(mockClient);
