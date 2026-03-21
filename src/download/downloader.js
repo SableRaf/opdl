@@ -9,9 +9,7 @@ const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
 
 const META_DIR = 'metadata';
-const THUMBNAIL_URL_TEMPLATE = 'https://openprocessing-usercontent.s3.amazonaws.com/thumbnails/visualThumbnail{visualID}@2x.jpg';
-// TODO: Handle modern OpenProcessing thumbnail URL pattern
-// https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg
+const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
 
 const downloadSketch = async (sketchInfo, options = {}) => {
   const finalOptions = { ...options };
