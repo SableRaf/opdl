@@ -25,6 +25,7 @@
  * @property {boolean} [options.createOpMetadata] - Create OP metadata file
  * @property {boolean} [options.vite] - Set up Vite project structure
  * @property {boolean} [options.run] - Automatically run dev server after scaffolding
+ * @property {boolean} [options.verbose] - Print detailed download info and error diagnostics
  */
 
 /**
@@ -35,6 +36,14 @@
 function parseArgs(argv) {
   if (argv.length === 0) {
     throw new Error('No command provided');
+  }
+
+  // Handle: opdl auth [--token <token>] [--clear]
+  if (argv[0] === 'auth') {
+    return {
+      command: 'auth',
+      options: parseOptions(argv.slice(1)),
+    };
   }
 
   // Handle: opdl fields [fieldSetName]
@@ -144,6 +153,7 @@ function parseOptions(args) {
     // Boolean flags
     if (arg === '--json') options.json = true;
     else if (arg === '--quiet') options.quiet = true;
+    else if (arg === '--clear') options.clear = true;
     else if (arg === '--downloadThumbnail') options.downloadThumbnail = true;
     else if (arg === '--saveMetadata') options.saveMetadata = true;
     else if (arg === '--downloadAssets') options.downloadAssets = true;
@@ -156,8 +166,11 @@ function parseOptions(args) {
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
     else if (arg === '--vite') options.vite = true;
     else if (arg === '--run') options.run = true;
+    else if (arg === '--verbose') options.verbose = true;
     // Value flags with = syntax
-    else if (arg.startsWith('--info=')) {
+    else if (arg.startsWith('--token=')) {
+      options.token = arg.split('=')[1];
+    } else if (arg.startsWith('--info=')) {
       options.info = arg.split('=')[1];
     } else if (arg.startsWith('--outputDir=')) {
       options.outputDir = arg.split('=')[1];
@@ -169,7 +182,9 @@ function parseOptions(args) {
       options.sort = arg.split('=')[1];
     }
     // Value flags with space syntax
-    else if (arg === '--info') {
+    else if (arg === '--token') {
+      options.token = args[++i];
+    } else if (arg === '--info') {
       options.info = args[++i];
     } else if (arg === '--outputDir') {
       options.outputDir = args[++i];

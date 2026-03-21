@@ -9,9 +9,7 @@ const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
 
 const META_DIR = 'metadata';
-const THUMBNAIL_URL_TEMPLATE = 'https://openprocessing-usercontent.s3.amazonaws.com/thumbnails/visualThumbnail{visualID}@2x.jpg';
-// TODO: Handle modern OpenProcessing thumbnail URL pattern
-// https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg
+const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
 
 const downloadSketch = async (sketchInfo, options = {}) => {
   const finalOptions = { ...options };
@@ -79,6 +77,9 @@ const downloadSketch = async (sketchInfo, options = {}) => {
         }
 
         try {
+          if (finalOptions.verbose) {
+            console.log(`opdl: downloading asset ${filename} from ${assetUrl}`);
+          }
           const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
           const assetFileName = sanitizeFilename(filename) || path.basename(filename);
           const assetFilePath = path.join(outputDir, assetFileName);
@@ -86,6 +87,11 @@ const downloadSketch = async (sketchInfo, options = {}) => {
         } catch (error) {
           if (!finalOptions.quiet) {
             console.warn(`opdl: failed to download asset ${filename}`);
+            if (finalOptions.verbose) {
+              console.warn(`  URL: ${assetUrl}`);
+              console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
+              console.warn(`  Error: ${error.message}`);
+            }
           }
         }
       }
@@ -101,16 +107,26 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   }
 
   if (finalOptions.downloadThumbnail && sketchInfo.metadata?.visualID) {
+    const thumbnailUrl = THUMBNAIL_URL_TEMPLATE.replace('{visualID}', sketchInfo.metadata.visualID);
     try {
-      const thumbnailUrl = THUMBNAIL_URL_TEMPLATE.replace('{visualID}', sketchInfo.metadata.visualID);
+      if (finalOptions.verbose) {
+        console.log(`opdl: downloading thumbnail from ${thumbnailUrl}`);
+      }
       const response = await axios.get(thumbnailUrl, { responseType: 'arraybuffer' });
       const thumbnailPath = path.join(metadataDir, 'thumbnail.jpg');
       fs.writeFileSync(thumbnailPath, response.data);
     } catch (error) {
       if (!finalOptions.quiet) {
         console.warn('opdl: unable to download thumbnail');
+        if (finalOptions.verbose) {
+          console.warn(`  URL: ${thumbnailUrl}`);
+          console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
+          console.warn(`  Error: ${error.message}`);
+        }
       }
     }
+  } else if (finalOptions.downloadThumbnail && finalOptions.verbose) {
+    console.log('opdl: skipping thumbnail — no visualID in metadata');
   }
 
   if (sketchInfo.metadata?.mode && sketchInfo.metadata.mode !== 'html') {
