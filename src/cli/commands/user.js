@@ -2,6 +2,7 @@ const { OpenProcessingClient } = require('../../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
 const { validateId } = require('../../api/validator');
+const { getToken } = require('../../config');
 
 /**
  * Handle user-related commands
@@ -11,7 +12,7 @@ const { validateId } = require('../../api/validator');
  * @param {Object} args.options - Command options
  */
 async function handleUserCommand(args) {
-  const client = new OpenProcessingClient(process.env.OP_API_KEY);
+  const client = new OpenProcessingClient(getToken(args.options.token));
 
   // Validate user ID
   const idValidation = validateId(args.id);
