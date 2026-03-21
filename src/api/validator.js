@@ -15,7 +15,7 @@ const VALIDATION_REASONS = {
 
 // Standard error messages
 const MESSAGES = {
-  PRIVATE_SKETCH: 'This sketch is private and cannot be downloaded.',
+  PRIVATE_SKETCH: 'This sketch is private and cannot be downloaded without the creator\'s authentication token.',
   HIDDEN_CODE: 'The source code for this sketch is hidden by the author.',
   NOT_FOUND_SKETCH: 'Sketch not found.',
   NOT_FOUND_USER: 'User not found.',

@@ -10,6 +10,8 @@ Download sketch ID `2063664` to a folder named `sketch_2063664`:
 npx opdl 2063664
 ```
 
+> **Note:** All API requests require a Bearer token. Generate one from your [OpenProcessing account settings](https://openprocessing.org/profile/#settings) and configure it before use (see [Authentication](#authentication)).
+
 ## Installation
 
 With npm:
@@ -31,6 +33,46 @@ With bun:
 ```bash
 bun install -g opdl
 ```
+
+## Authentication
+
+All requests to the OpenProcessing API require a Bearer token. Generate one from your [OpenProcessing account settings](https://openprocessing.org/profile/#settings).
+
+### Save your token (recommended)
+
+```bash
+opdl auth --token YOUR_API_TOKEN
+```
+
+This writes the token to `~/.opdlrc` so every subsequent `opdl` command picks it up automatically.
+
+```bash
+opdl auth            # check token status
+opdl auth --clear    # remove saved token
+```
+
+### Environment variable
+
+```bash
+export OP_API_KEY=YOUR_API_TOKEN
+opdl 2063664
+```
+
+Useful for CI/CD pipelines or when you prefer not to write the token to disk.
+
+### One-off flag
+
+```bash
+opdl 2063664 --token YOUR_API_TOKEN
+```
+
+### Resolution order
+
+When a command runs, the token is resolved in this priority order:
+
+1. `--token` flag (highest)
+2. `OP_API_KEY` environment variable
+3. `token` in `~/.opdlrc`
 
 ## Usage
 
@@ -80,7 +122,7 @@ See the [documentation](HELP.md) file for a full list of CLI options and flags.
 const opdl = require('opdl');
 
 (async () => {
-  const result = await opdl('2063664');
+  const result = await opdl('2063664', { token: process.env.OP_API_KEY });
 
   if (result.success) {
     console.log(`Downloaded sketch: ${result.sketchInfo.title} by ${result.sketchInfo.author}`);
@@ -97,7 +139,7 @@ const opdl = require('opdl');
 const { OpenProcessingClient } = require('opdl');
 
 (async () => {
-  const client = new OpenProcessingClient();
+  const client = new OpenProcessingClient(process.env.OP_API_KEY);
 
   // Get sketch details
   const sketch = await client.getSketch(2063664);
@@ -166,11 +208,49 @@ sketch_{id}/
 - Private sketches and sketches with hidden code abort the download and populate `sketchInfo.error` with details.
 - Network or file-system errors populate `sketchInfo.error` while still returning a structured result.
 - Asset-download failures are logged (unless `quiet: true`) but do not abort the operation.
-- **Rate Limiting**: The OpenProcessing API has a rate limit of 40 calls per minute. When exceeded, you'll receive a descriptive error message with retry guidance.
+- **Rate Limiting**: The OpenProcessing API has dynamic rate-limits that depend on your account type. When exceeded, you'll receive a descriptive error message with retry guidance.
 
 ## Attribution
 
 All downloads preserve the original licensing information. `LICENSE` reflects Creative Commons licenses when provided, and `OPENPROCESSING.md` records metadata, tags, and library dependencies. Attribution comments at the top of each code file explain the sketch origin and link back to OpenProcessing.
+
+## Development
+
+### Running locally
+
+Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/SableRaf/opdl.git
+cd opdl
+npm install
+```
+
+Link the package globally so the `opdl` command runs your local source. 
+
+From the project root directory, run:
+
+```bash
+npm link
+```
+
+You can now run `opdl` from anywhere and it will use your local changes. To unlink when you're done:
+
+```bash
+npm unlink -g opdl
+```
+
+### Running tests
+
+```bash
+npm test
+```
+
+Tests use [Vitest](https://vitest.dev/) and include a live API integration test that makes real requests to OpenProcessing. Set `OP_API_KEY` before running tests to avoid rate limiting:
+
+```bash
+OP_API_KEY=YOUR_API_TOKEN npm test
+```
 
 ## Thanks
 Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api

@@ -7,6 +7,7 @@ const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'cli',
 const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'sketch.js'));
 const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'user.js'));
 const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'curation.js'));
+const { handleAuthCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'auth.js'));
 
 /**
  * Main CLI entry point
@@ -30,6 +31,10 @@ async function main() {
     const parsed = parseArgs(argv);
 
     switch (parsed.command) {
+      case 'auth':
+        handleAuthCommand(parsed.options);
+        break;
+
       case 'fields':
         await handleFieldsCommand({
           fieldSetName: parsed.id,
@@ -87,6 +92,11 @@ USAGE:
 
 COMMANDS:
 
+  Authentication:
+    opdl auth --token <token>             Save API token to ~/.opdlrc
+    opdl auth --clear                     Remove saved token
+    opdl auth                             Show token status
+
   Field Discovery:
     opdl fields                           List all available field sets
     opdl fields <fieldSet>                Show fields for a specific field set
@@ -118,6 +128,9 @@ OPTIONS:
     --limit <n>            Limit number of results
     --offset <n>           Skip first n results
     --sort <asc|desc>      Sort order
+
+  Authentication:
+    --token <value>        API bearer token (overrides OP_API_KEY and ~/.opdlrc)
 
   Download Options (for sketch download):
     --outputDir <path>     Output directory for files
@@ -152,7 +165,12 @@ EXAMPLES:
   opdl curation sketches 12 --limit 20 --sort desc
 
 ENVIRONMENT:
-  OP_API_KEY    OpenProcessing API key (if required)
+  OP_API_KEY    OpenProcessing API bearer token
+
+TOKEN RESOLUTION (highest to lowest priority):
+  1. --token <value> flag
+  2. OP_API_KEY environment variable
+  3. token field in ~/.opdlrc (set via: opdl auth --token <value>)
 
 For more information, visit: https://github.com/SableRaf/opdl
 `);

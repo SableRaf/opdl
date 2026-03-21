@@ -3,6 +3,7 @@ const { selectFields } = require('../fieldSelector');
 const { formatObject } = require('../formatters');
 const { validateId } = require('../../api/validator');
 const opdl = require('../../index');
+const { getToken } = require('../../config');
 
 /**
  * Handle sketch-related commands
@@ -12,7 +13,8 @@ const opdl = require('../../index');
  * @param {Object} args.options - Command options
  */
 async function handleSketchCommand(args) {
-  const client = new OpenProcessingClient(process.env.OP_API_KEY);
+  const token = getToken(args.options.token);
+  const client = new OpenProcessingClient(token);
 
   // Validate sketch ID
   const idValidation = validateId(args.id);
@@ -22,10 +24,8 @@ async function handleSketchCommand(args) {
   const sketchId = idValidation.data;
 
   if (args.subcommand === 'info' || args.options.info) {
-    // Get sketch metadata (client validates the response)
     const sketch = await client.getSketch(sketchId);
 
-    // Select fields if --info specified
     let output = sketch;
     if (args.options.info) {
       output = selectFields(sketch, {
@@ -34,12 +34,10 @@ async function handleSketchCommand(args) {
       });
     }
 
-    // Format and print
     if (!args.options.quiet) {
       console.log(formatObject(output, { json: args.options.json }));
     }
   } else {
-    // Download sketch (use existing opdl functionality)
     const downloadOptions = {
       outputDir: args.options.outputDir,
       downloadAssets: !args.options.skipAssets,
@@ -53,7 +51,7 @@ async function handleSketchCommand(args) {
       run: args.options.run || false,
     };
 
-    const result = await opdl(sketchId, downloadOptions);
+    const result = await opdl(sketchId, { ...downloadOptions, token });
 
     if (!result.success) {
       throw new Error(result.sketchInfo.error || 'Failed to download sketch');

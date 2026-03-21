@@ -8,9 +8,10 @@ const logError = (message, quiet) => {
 };
 
 const fetchData = async (url, description, options = {}) => {
-  const { quiet = false } = options;
+  const { quiet = false, token } = options;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
   try {
-    const response = await axios.get(url, { validateStatus: () => true });
+    const response = await axios.get(url, { headers, validateStatus: () => true });
     const responseData = response.data;
     if (!responseData) {
       const message = `Unexpected response format for ${description}`;
@@ -32,11 +33,9 @@ const fetchData = async (url, description, options = {}) => {
 
 
 const fetchCodeResponse = async (sketchId, options = {}) => {
-  const { quiet = false } = options;
-  const { data: responseData, error } = await fetchData(`https://openprocessing.org/api/sketch/${sketchId}/code`, `sketch code ${sketchId}`, { quiet });
+  const { quiet = false, token } = options;
+  const { data: responseData, error } = await fetchData(`https://openprocessing.org/api/sketch/${sketchId}/code`, `sketch code ${sketchId}`, { quiet, token });
 
-  // Validate responseData if it exists, regardless of error field
-  // This allows proper categorization of errors (private, hidden code, etc.)
   if (responseData) {
     const validation = validateSketch(responseData, { type: 'code' });
 
@@ -50,12 +49,10 @@ const fetchCodeResponse = async (sketchId, options = {}) => {
     return { codeParts: validation.data, error: '' };
   }
 
-  // Only return the error string if responseData is null
   if (error) {
     return { codeParts: [], error };
   }
 
-  // This should not be reached, but handle it just in case
   return { codeParts: [], error: 'Unexpected response format' };
 };
 
@@ -63,7 +60,8 @@ const fetchUserInfo = async (userId, options = {}) => {
   if (!userId) {
     return {};
   }
-  const { data, error } = await fetchData(`https://openprocessing.org/api/user/${userId}`, `user ${userId}`, options);
+  const { quiet, token } = options;
+  const { data, error } = await fetchData(`https://openprocessing.org/api/user/${userId}`, `user ${userId}`, { quiet, token });
   if (error) {
     return {}; 
   }
@@ -71,7 +69,7 @@ const fetchUserInfo = async (userId, options = {}) => {
 };
 
 const fetchSketchInfo = async (sketchId, options = {}) => {
-  const { quiet = false } = options;
+  const { quiet = false, token } = options;
   const parsedId = Number(sketchId);
   if (!Number.isFinite(parsedId) || parsedId <= 0) {
     return null;
@@ -110,7 +108,7 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
   };
 
   // Fetch metadata
-  const { data: metadata } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet });
+  const { data: metadata } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet, token });
 
   // Validate metadata
   const metadataValidation = validateSketch(metadata, { type: 'metadata' });
@@ -128,32 +126,32 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
     sketchInfo.parent.sketchID = metadata.parentID || null;
   }
 
-  // Fetch parent metadata if fork
-  if (sketchInfo.isFork && sketchInfo.parent.sketchID) {
-    const { data: parentMetadata } = await fetchData(`https://openprocessing.org/api/sketch/${sketchInfo.parent.sketchID}`, `parent sketch ${sketchInfo.parent.sketchID}`, { quiet });
+  const fetchOptions = { quiet, token };
 
-    if (parentMetadata) {
-      sketchInfo.parent.title = parentMetadata.title || '';
-      const parentUser = await fetchUserInfo(parentMetadata.userID, { quiet });
-      sketchInfo.parent.author = parentUser.fullname || '';
-    }
+  const [parentResult, userResult, codeResponse, assetsResult, librariesResult] = await Promise.all([
+    sketchInfo.isFork && sketchInfo.parent.sketchID
+      ? fetchData(`https://openprocessing.org/api/sketch/${sketchInfo.parent.sketchID}`, `parent sketch ${sketchInfo.parent.sketchID}`, fetchOptions)
+      : Promise.resolve({ data: null }),
+    sketchInfo.metadata.userID
+      ? fetchData(`https://openprocessing.org/api/user/${sketchInfo.metadata.userID}`, `user ${sketchInfo.metadata.userID}`, fetchOptions)
+      : Promise.resolve({ data: null }),
+    fetchCodeResponse(parsedId, fetchOptions),
+    fetchData(`https://openprocessing.org/api/sketch/${parsedId}/files?limit=100&offset=0`, `assets for sketch ${parsedId}`, fetchOptions),
+    fetchData(`https://openprocessing.org/api/sketch/${parsedId}/libraries?limit=100&offset=0`, `libraries for sketch ${parsedId}`, fetchOptions),
+  ]);
+
+  if (parentResult.data) {
+    sketchInfo.parent.title = parentResult.data.title || '';
+    const parentUser = await fetchUserInfo(parentResult.data.userID, fetchOptions);
+    sketchInfo.parent.author = parentUser.fullname || '';
   }
 
-  // Fetch user info
-  if (sketchInfo.metadata.userID) {
-    const { data: user } = await fetchData(`https://openprocessing.org/api/user/${sketchInfo.metadata.userID}`, `user ${sketchInfo.metadata.userID}`, { quiet });
-
-    if (user) {
-      sketchInfo.author = user.fullname || '';
-    }
+  if (userResult.data) {
+    sketchInfo.author = userResult.data.fullname || '';
   }
 
-  // Fetch code
-  const codeResponse = await fetchCodeResponse(parsedId, { quiet });
   sketchInfo.codeParts = codeResponse.codeParts || [];
   if (codeResponse.error) {
-    // Note: fetchCodeResponse now properly validates and categorizes errors
-    // Check the error message to determine if it indicates unavailability
     const isPrivateError = codeResponse.error === MESSAGES.PRIVATE_SKETCH;
     const isHiddenError = codeResponse.error === MESSAGES.HIDDEN_CODE;
 
@@ -166,22 +164,18 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
     }
   }
 
-  // Fetch assets
-  const { data: assets, error: assetsError } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}/files?limit=100&offset=0`, `assets for sketch ${parsedId}`, { quiet });
-  if (assetsError) {
-    setError(assetsError);
+  if (assetsResult.error) {
+    setError(assetsResult.error);
   }
-  if (assets) {
-    sketchInfo.files = assets;
+  if (assetsResult.data) {
+    sketchInfo.files = assetsResult.data;
   }
 
-  // Fetch libraries
-  const { data: libraries, error: librariesError } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}/libraries?limit=100&offset=0`, `libraries for sketch ${parsedId}`, { quiet });
-  if (librariesError) {
-    setError(librariesError);
+  if (librariesResult.error) {
+    setError(librariesResult.error);
   }
-  if (libraries) {
-    sketchInfo.libraries = libraries;
+  if (librariesResult.data) {
+    sketchInfo.libraries = librariesResult.data;
   }
 
   sketchInfo.metadata = sketchInfo.metadata || {};
