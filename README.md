@@ -10,7 +10,7 @@ Download sketch ID `2063664` to a folder named `sketch_2063664`:
 npx opdl 2063664
 ```
 
-> **Note:** Since v2 of the OpenProcessing API, all requests now require a Bearer token (see [Authentication](#authentication)).
+> [!NOTE] Since v2 of the OpenProcessing API, unauthenticated requests are heavily rate limited. A Bearer token is recommended for regular use (see [Authentication](#authentication)).
 
 ## Installation
 
@@ -36,7 +36,7 @@ bun install -g opdl
 
 ## Authentication
 
-All requests to the OpenProcessing API require a Bearer token. Generate one from your OpenProcessing account settings. Go to `Profile` > `Edit Profile` > `API Tokens` and configure it before use.
+Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens`.
 
 ### Save your token (recommended)
 
