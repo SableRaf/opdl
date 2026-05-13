@@ -61,10 +61,10 @@ opdl sketch info 1142958
 opdl 1142958 --info title,license,libraries
 
 # List user's sketches
-opdl user sketches 12345
+opdl user sketches @Sableraph
 
 # Output as JSON
-opdl user 12345 --json
+opdl user @Sableraph --json
 ```
 
 ## Programmatic API
@@ -101,27 +101,26 @@ const { OpenProcessingClient } = require('opdl');
   const client = new OpenProcessingClient();
   // Or with API key: new OpenProcessingClient('your-api-key')
 
+  // --- Block A: sketch + author lookup ---
   // Get sketch details
   const sketch = await client.getSketch(2063664);
   console.log(`${sketch.title} by ${sketch.userID}`);
 
-  // Get user information
-  const user = await client.getUser(sketch.userID);
-  console.log(`Author: ${user.userName}`);
+  // sketch.userID comes from the API response; the @username form is the
+  // preferred way to look up a user when you already have a username.
+  const author = await client.getUser(sketch.userID);
+  console.log(`Author: ${author.fullname}`);
 
-  // Get sketch code
+  // Get sketch code (getSketchCode returns an array directly)
   const code = await client.getSketchCode(2063664);
-  console.log('Files:', code.files.map(f => f.name));
-
-  // List user's sketches with pagination
-  const sketches = await client.getUserSketches(sketch.userID, {
-    limit: 10,
-    offset: 0,
-    sort: 'desc'
-  });
+  console.log('Files:', code.map(f => f.title));
 
   // Get popular tags
   const tags = await client.getTags({ duration: 'thisMonth' });
+
+  // --- Block B: direct user lookup by @username (independent of Block A) ---
+  const user = await client.getUser('@Sableraph');
+  const sketches = await client.getUserSketches('@Sableraph', { limit: 10 });
 })();
 ```
 
@@ -308,31 +307,39 @@ opdl 1142958 --info all --json
 
 Work with OpenProcessing users.
 
+#### User identifiers
+
+OpenProcessing is migrating from numeric `userID` to usernames. Users can be identified by:
+
+- `@username` (preferred, e.g. `@Sableraph`) — note the required `@` prefix
+- numeric `userID` (e.g. `1`) — still accepted but deprecated; `opdl` emits a warning when a numeric userID is used directly
+
 #### Display user information
 
 ```bash
-opdl user <userId> [options]
+opdl user <user> [options]
 ```
 
 **Example:**
 ```bash
-opdl user 1
-opdl user 1 --info fullname,website,createdOn
-opdl user 1 --json
+opdl user @Sableraph
+opdl user @Sableraph --info fullname,website,createdOn
+opdl user @Sableraph --json
+opdl user @Sableraph                # deprecated; prints a warning
 ```
 
 #### List user's sketches
 
 ```bash
-opdl user sketches <userId> [options]
+opdl user sketches <user> [options]
 ```
 
 **Example:**
 ```bash
-opdl user sketches 1
-opdl user sketches 1 --limit 10
-opdl user sketches 1 --info visualID,title,createdOn
-opdl user sketches 1 --json
+opdl user sketches @Sableraph
+opdl user sketches @Sableraph --limit 10
+opdl user sketches @Sableraph --info visualID,title,createdOn
+opdl user sketches @Sableraph --json
 ```
 
 **Note:** The user sketches list endpoint returns limited fields. Use `opdl fields user.sketches` to see available fields. For full sketch details including license and other metadata, fetch each sketch individually with `opdl sketch info <sketchId>`.
@@ -340,26 +347,26 @@ opdl user sketches 1 --json
 #### List user's followers
 
 ```bash
-opdl user followers <userId> [options]
+opdl user followers <user> [options]
 ```
 
 **Example:**
 ```bash
-opdl user followers 1
-opdl user followers 1 --limit 20 --json
-opdl user followers 1 --info userID,fullname
+opdl user followers @Sableraph
+opdl user followers @Sableraph --limit 20 --json
+opdl user followers @Sableraph --info userID,fullname
 ```
 
 #### List users being followed
 
 ```bash
-opdl user following <userId> [options]
+opdl user following <user> [options]
 ```
 
 **Example:**
 ```bash
-opdl user following 1
-opdl user following 1 --limit 20 --json
+opdl user following @Sableraph
+opdl user following @Sableraph --limit 20 --json
 ```
 
 ### Curation Commands
@@ -410,8 +417,8 @@ Select specific fields to display. Can be:
 **Examples:**
 ```bash
 opdl 1142958 --info title,license
-opdl user 1 --info fullname,website,location
-opdl user sketches 1 --info visualID,title,createdOn
+opdl user @Sableraph --info fullname,website,location
+opdl user sketches @Sableraph --info visualID,title,createdOn
 ```
 
 #### `--json`
@@ -421,7 +428,7 @@ Output data in JSON format instead of table format.
 **Examples:**
 ```bash
 opdl sketch info 1142958 --json
-opdl user 1 --json
+opdl user @Sableraph --json
 opdl user sketches 1 --json
 ```
 
@@ -637,19 +644,19 @@ npm run build
 
 ```bash
 # Get user profile
-opdl user 1
+opdl user @Sableraph
 
 # Get specific user fields
-opdl user 1 --info fullname,website,location,createdOn
+opdl user @Sableraph --info fullname,website,location,createdOn
 
 # List user's recent sketches
-opdl user sketches 1 --limit 10 --sort desc
+opdl user sketches @Sableraph --limit 10 --sort desc
 
 # Get sketch IDs and titles only
-opdl user sketches 1 --info visualID,title
+opdl user sketches @Sableraph --info visualID,title
 
 # List first 50 followers as JSON
-opdl user followers 1 --limit 50 --json
+opdl user followers @Sableraph --limit 50 --json
 
 # Check who a user is following
 opdl user following 1 --info userID,fullname,membershipType
@@ -826,13 +833,13 @@ OpenProcessing API key for authenticated requests (if required).
 
 ```bash
 export OP_API_KEY="your-api-key-here"
-opdl user 1
+opdl user @Sableraph
 ```
 
 Or set it for a single command:
 
 ```bash
-OP_API_KEY="your-api-key-here" opdl user 1
+OP_API_KEY="your-api-key-here" opdl user @Sableraph
 ```
 
 ## Exit Codes

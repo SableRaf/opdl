@@ -5,6 +5,9 @@ import {
   validateUser,
   validateCuration,
   validateId,
+  validateUserIdentifier,
+  isStrictPositiveIntegerId,
+  isValidUsernameSegment,
   validateListOptions,
   validateTagsOptions,
   validateResponse,
@@ -389,6 +392,116 @@ describe('Validator Module', () => {
       const result = validateId(Infinity);
       assert.equal(result.valid, false);
       assert.equal(result.reason, VALIDATION_REASONS.INVALID_ID);
+    });
+  });
+
+  describe('isStrictPositiveIntegerId', () => {
+    it('accepts positive integers (number)', () => {
+      assert.equal(isStrictPositiveIntegerId(1), true);
+      assert.equal(isStrictPositiveIntegerId(1000), true);
+      assert.equal(isStrictPositiveIntegerId(1e3), true); // 1000 at runtime
+    });
+
+    it('rejects non-positive or non-integer numbers', () => {
+      assert.equal(isStrictPositiveIntegerId(0), false);
+      assert.equal(isStrictPositiveIntegerId(-1), false);
+      assert.equal(isStrictPositiveIntegerId(1.5), false);
+      assert.equal(isStrictPositiveIntegerId(NaN), false);
+      assert.equal(isStrictPositiveIntegerId(Infinity), false);
+    });
+
+    it('accepts strict positive integer strings', () => {
+      assert.equal(isStrictPositiveIntegerId('1'), true);
+      assert.equal(isStrictPositiveIntegerId('123'), true);
+    });
+
+    it('rejects malformed strings', () => {
+      assert.equal(isStrictPositiveIntegerId('0'), false);
+      assert.equal(isStrictPositiveIntegerId('01'), false);
+      assert.equal(isStrictPositiveIntegerId('1.5'), false);
+      assert.equal(isStrictPositiveIntegerId('1e3'), false);
+      assert.equal(isStrictPositiveIntegerId(''), false);
+      assert.equal(isStrictPositiveIntegerId(' 1'), false);
+      assert.equal(isStrictPositiveIntegerId('+1'), false);
+      assert.equal(isStrictPositiveIntegerId('-1'), false);
+    });
+
+    it('rejects other types', () => {
+      assert.equal(isStrictPositiveIntegerId(null), false);
+      assert.equal(isStrictPositiveIntegerId(undefined), false);
+      assert.equal(isStrictPositiveIntegerId({}), false);
+    });
+  });
+
+  describe('isValidUsernameSegment', () => {
+    it('accepts @-prefixed usernames', () => {
+      assert.equal(isValidUsernameSegment('@Sableraph'), true);
+      assert.equal(isValidUsernameSegment('@a'), true);
+      assert.equal(isValidUsernameSegment('@foo_bar-1'), true);
+    });
+
+    it('rejects strings without @ or malformed', () => {
+      assert.equal(isValidUsernameSegment('Sableraph'), false);
+      assert.equal(isValidUsernameSegment('@'), false);
+      assert.equal(isValidUsernameSegment('@@'), false);
+      assert.equal(isValidUsernameSegment('@@foo'), false);
+      assert.equal(isValidUsernameSegment('@ '), false);
+      assert.equal(isValidUsernameSegment('@foo bar'), false);
+      assert.equal(isValidUsernameSegment(''), false);
+    });
+
+    it('rejects non-strings', () => {
+      assert.equal(isValidUsernameSegment(1), false);
+      assert.equal(isValidUsernameSegment(null), false);
+      assert.equal(isValidUsernameSegment(undefined), false);
+    });
+  });
+
+  describe('validateUserIdentifier', () => {
+    it('accepts positive integer (number)', () => {
+      const r = validateUserIdentifier(1);
+      assert.equal(r.valid, true);
+      assert.equal(r.data.value, 1);
+      assert.equal(r.data.isNumeric, true);
+    });
+
+    it('accepts positive integer string', () => {
+      const r = validateUserIdentifier('123');
+      assert.equal(r.valid, true);
+      assert.equal(r.data.value, 123);
+      assert.equal(r.data.isNumeric, true);
+    });
+
+    it('accepts @username', () => {
+      const r = validateUserIdentifier('@Sableraph');
+      assert.equal(r.valid, true);
+      assert.equal(r.data.value, '@Sableraph');
+      assert.equal(r.data.isNumeric, false);
+    });
+
+    it('rejects bare non-numeric strings', () => {
+      const r = validateUserIdentifier('Sableraph');
+      assert.equal(r.valid, false);
+      assert.match(r.message, /@username|@ prefix|@"/);
+    });
+
+    it('rejects malformed @ strings', () => {
+      for (const v of ['@', '@@', '@@foo', '@ foo', '@foo bar']) {
+        assert.equal(validateUserIdentifier(v).valid, false, `should reject ${JSON.stringify(v)}`);
+      }
+    });
+
+    it('rejects non-strict numeric inputs', () => {
+      for (const v of ['', '0', '-1', '01', '1.5', '1e3', 0, -1, 1.5, NaN, Infinity, null, undefined]) {
+        assert.equal(validateUserIdentifier(v).valid, false, `should reject ${JSON.stringify(v)}`);
+      }
+    });
+
+    it('1e3 as a number is valid (already 1000 at runtime)', () => {
+      const r = validateUserIdentifier(1e3);
+      assert.equal(r.valid, true);
+      assert.equal(r.data.value, 1000);
+      assert.equal(r.data.isNumeric, true);
     });
   });
 

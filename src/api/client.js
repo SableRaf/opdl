@@ -5,7 +5,41 @@
  */
 
 const axios = require('axios');
-const { validateSketch, validateUser, validateCuration } = require('./validator');
+const {
+  validateSketch,
+  validateUser,
+  validateCuration,
+  isStrictPositiveIntegerId,
+  isValidUsernameSegment,
+} = require('./validator');
+
+/**
+ * Format a user path segment for OpenProcessing API URLs.
+ * Accepts positive integer userIDs or @username strings; throws on anything else.
+ * @param {number|string} id
+ * @returns {string}
+ */
+function formatUserPathSegment(id) {
+  if (isStrictPositiveIntegerId(id)) {
+    return String(id);
+  }
+  if (isValidUsernameSegment(id)) {
+    return id;
+  }
+  throw new Error(
+    'User identifier must be a username with "@" prefix (e.g. "@Sableraph") or a positive integer userID. Numeric userIDs are deprecated by OpenProcessing.'
+  );
+}
+
+/**
+ * Throw if a list-endpoint response is an API error envelope ({ success: false, ... }).
+ * @param {*} responseData
+ */
+function ensureNotApiError(responseData) {
+  if (responseData && responseData.success === false) {
+    throw new Error(responseData.message || 'API error');
+  }
+}
 
 /**
  * @typedef {import('../types/api')} API
@@ -143,12 +177,13 @@ class OpenProcessingClient {
 
   /**
    * Get user information
-   * @param {number|string} id - User ID
+   * @param {number|string} id - Username (with @ prefix, e.g. "@Sableraph") or numeric userID (deprecated)
    * @returns {Promise<any>} User data
    * @throws {Error} If user is not found or API returns an error
    */
   async getUser(id) {
-    const response = await this.client.get(`/api/user/${id}`, { validateStatus: () => true });
+    const segment = formatUserPathSegment(id);
+    const response = await this.client.get(`/api/user/${segment}`, { validateStatus: () => true });
     const validation = validateUser(response.data);
 
     if (!validation.valid) {
@@ -160,7 +195,7 @@ class OpenProcessingClient {
 
   /**
    * Get user's sketches
-   * @param {number|string} userId - User ID
+   * @param {number|string} userId - Username (with @ prefix, e.g. "@Sableraph") or numeric userID (deprecated)
    * @param {Object} [options] - List options
    * @param {number} [options.limit] - Maximum number of results
    * @param {number} [options.offset] - Number of results to skip
@@ -168,15 +203,17 @@ class OpenProcessingClient {
    * @returns {Promise<any[]>} User sketches
    */
   async getUserSketches(userId, options = {}) {
-    const response = await this.client.get(`/api/user/${userId}/sketches`, {
+    const segment = formatUserPathSegment(userId);
+    const response = await this.client.get(`/api/user/${segment}/sketches`, {
       params: options,
     });
+    ensureNotApiError(response.data);
     return response.data;
   }
 
   /**
    * Get user's followers
-   * @param {number|string} userId - User ID
+   * @param {number|string} userId - Username (with @ prefix, e.g. "@Sableraph") or numeric userID (deprecated)
    * @param {Object} [options] - List options
    * @param {number} [options.limit] - Maximum number of results
    * @param {number} [options.offset] - Number of results to skip
@@ -184,15 +221,17 @@ class OpenProcessingClient {
    * @returns {Promise<any[]>} User followers
    */
   async getUserFollowers(userId, options = {}) {
-    const response = await this.client.get(`/api/user/${userId}/followers`, {
+    const segment = formatUserPathSegment(userId);
+    const response = await this.client.get(`/api/user/${segment}/followers`, {
       params: options,
     });
+    ensureNotApiError(response.data);
     return response.data;
   }
 
   /**
    * Get users followed by user
-   * @param {number|string} userId - User ID
+   * @param {number|string} userId - Username (with @ prefix, e.g. "@Sableraph") or numeric userID (deprecated)
    * @param {Object} [options] - List options
    * @param {number} [options.limit] - Maximum number of results
    * @param {number} [options.offset] - Number of results to skip
@@ -200,15 +239,17 @@ class OpenProcessingClient {
    * @returns {Promise<any[]>} Users being followed
    */
   async getUserFollowing(userId, options = {}) {
-    const response = await this.client.get(`/api/user/${userId}/following`, {
+    const segment = formatUserPathSegment(userId);
+    const response = await this.client.get(`/api/user/${segment}/following`, {
       params: options,
     });
+    ensureNotApiError(response.data);
     return response.data;
   }
 
   /**
    * Get sketches hearted by user
-   * @param {number|string} userId - User ID
+   * @param {number|string} userId - Username (with @ prefix, e.g. "@Sableraph") or numeric userID (deprecated)
    * @param {Object} [options] - List options
    * @param {number} [options.limit] - Maximum number of results
    * @param {number} [options.offset] - Number of results to skip
@@ -216,9 +257,11 @@ class OpenProcessingClient {
    * @returns {Promise<any[]>} Hearted sketches
    */
   async getUserHearts(userId, options = {}) {
-    const response = await this.client.get(`/api/user/${userId}/hearts`, {
+    const segment = formatUserPathSegment(userId);
+    const response = await this.client.get(`/api/user/${segment}/hearts`, {
       params: options,
     });
+    ensureNotApiError(response.data);
     return response.data;
   }
 

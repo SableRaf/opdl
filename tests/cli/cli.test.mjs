@@ -119,6 +119,30 @@ describe('CLI Parser', () => {
         expect(result.options.offset).toBe(5);
         expect(result.options.sort).toBe('desc');
       });
+
+      it('should parse user info command with @username', () => {
+        const result = parseArgs(['user', '@Sableraph']);
+        expect(result).toEqual({
+          command: 'user',
+          subcommand: null,
+          id: '@Sableraph',
+          options: {}
+        });
+      });
+
+      it('should parse user sketches with @username', () => {
+        const result = parseArgs(['user', 'sketches', '@Sableraph']);
+        expect(result.command).toBe('user');
+        expect(result.subcommand).toBe('sketches');
+        expect(result.id).toBe('@Sableraph');
+      });
+
+      it('should parse user followers with @username and --limit', () => {
+        const result = parseArgs(['user', 'followers', '@Sableraph', '--limit', '5']);
+        expect(result.subcommand).toBe('followers');
+        expect(result.id).toBe('@Sableraph');
+        expect(result.options.limit).toBe(5);
+      });
     });
 
     describe('curation command', () => {

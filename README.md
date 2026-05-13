@@ -141,27 +141,29 @@ const { OpenProcessingClient } = require('opdl');
 (async () => {
   const client = new OpenProcessingClient(process.env.OP_API_KEY);
 
+  // --- Block A: sketch + author lookup ---
   // Get sketch details
   const sketch = await client.getSketch(2063664);
   console.log(`${sketch.title} by userID ${sketch.userID}`);
 
-  // Get user information
-  const user = await client.getUser(sketch.userID);
-  console.log(`Author: ${user.userName}`);
+  // userID is returned by the sketch endpoint; the @username form below
+  // is the preferred form when looking up a known user
+  const author = await client.getUser(sketch.userID);
+  console.log(`Author: ${author.fullname}`);
 
-  // Get sketch code
+  // Get sketch code (getSketchCode returns an array directly)
   const code = await client.getSketchCode(2063664);
-  console.log(`Code files:`, code.files.map(f => f.name));
-
-  // List user's sketches with pagination
-  const userSketches = await client.getUserSketches(sketch.userID, {
-    limit: 10,
-    offset: 0,
-    sort: 'desc'
-  });
+  console.log(`Code files:`, code.map(f => f.title));
 
   // Get popular tags
   const tags = await client.getTags({ duration: 'thisMonth' });
+
+  // --- Block B: direct user lookup by @username (independent of Block A) ---
+  // OpenProcessing is migrating from numeric userIDs to usernames.
+  // When you have a username, prefer the @username form; numeric userIDs
+  // are still accepted but deprecated.
+  const user = await client.getUser('@Sableraph');
+  const sketches = await client.getUserSketches('@Sableraph', { limit: 10 });
 })();
 ```
 

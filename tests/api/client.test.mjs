@@ -194,13 +194,20 @@ describe('OpenProcessingClient', () => {
       assert.deepEqual(result, mockFollowers);
     });
 
-    it('should handle fullname instead of ID', async () => {
+    it('should accept @username and hit the /@username path', async () => {
       nock(BASE_URL)
-        .get('/api/user/testuser/followers')
+        .get('/api/user/@testuser/followers')
         .reply(200, []);
 
-      const result = await client.getUserFollowers('testuser');
+      const result = await client.getUserFollowers('@testuser');
       assert.deepEqual(result, []);
+    });
+
+    it('should reject bare non-numeric identifiers (no @ prefix) without making a request', async () => {
+      await assert.rejects(
+        async () => await client.getUserFollowers('testuser'),
+        { message: /username|deprecated/ }
+      );
     });
 
     it('should pass list options', async () => {
@@ -474,6 +481,77 @@ describe('OpenProcessingClient', () => {
         .reply(404, { message: 'Not found' });
 
       await assert.rejects(async () => await client.getUserHearts(456));
+    });
+  });
+
+  describe('User identifier handling', () => {
+    it('getUser hits /api/user/@username for @username', async () => {
+      nock(BASE_URL)
+        .get('/api/user/@Sableraph')
+        .reply(200, { userID: 1, fullname: 'Test' });
+
+      const result = await client.getUser('@Sableraph');
+      assert.equal(result.fullname, 'Test');
+    });
+
+    it('getUser still works with numeric IDs', async () => {
+      nock(BASE_URL)
+        .get('/api/user/123')
+        .reply(200, { userID: 123, fullname: 'Test' });
+
+      const result = await client.getUser(123);
+      assert.equal(result.userID, 123);
+    });
+
+    it('getUser rejects bare non-numeric input synchronously', async () => {
+      await assert.rejects(async () => await client.getUser('Sableraph'), { message: /username|deprecated/ });
+    });
+
+    it('getUser rejects 0, negatives, leading zeros, decimals, exponent-strings', async () => {
+      for (const bad of [0, -1, '01', '1.5', '1e3']) {
+        await assert.rejects(
+          async () => await client.getUser(bad),
+          { message: /username|deprecated/ },
+          `should reject ${JSON.stringify(bad)}`
+        );
+      }
+    });
+  });
+
+  describe('List endpoint error envelope handling', () => {
+    it('getUserSketches throws on { success: false } envelope', async () => {
+      nock(BASE_URL)
+        .get('/api/user/@ghost/sketches')
+        .reply(200, { success: false, message: 'User not found.' });
+
+      await assert.rejects(
+        async () => await client.getUserSketches('@ghost'),
+        { message: /User not found/ }
+      );
+    });
+
+    it('getUserFollowers throws on { success: false }', async () => {
+      nock(BASE_URL)
+        .get('/api/user/@ghost/followers')
+        .reply(200, { success: false, message: 'User not found.' });
+
+      await assert.rejects(async () => await client.getUserFollowers('@ghost'), { message: /User not found/ });
+    });
+
+    it('getUserFollowing throws on { success: false }', async () => {
+      nock(BASE_URL)
+        .get('/api/user/@ghost/following')
+        .reply(200, { success: false, message: 'User not found.' });
+
+      await assert.rejects(async () => await client.getUserFollowing('@ghost'), { message: /User not found/ });
+    });
+
+    it('getUserHearts throws on { success: false }', async () => {
+      nock(BASE_URL)
+        .get('/api/user/@ghost/hearts')
+        .reply(200, { success: false, message: 'User not found.' });
+
+      await assert.rejects(async () => await client.getUserHearts('@ghost'), { message: /User not found/ });
     });
   });
 
