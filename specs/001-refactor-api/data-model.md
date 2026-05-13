@@ -41,7 +41,7 @@ Returned by: `GET /api/sketch/{id}` via `client.getSketch(id)`
 - `engineID` (number) - Processing engine version ID
 - `engineURL` (string) - CDN URL for the selected p5.js/processing.js engine
 - `fileBase` (string) - S3 base URL for sketch assets
-- `isTutorial` (number) - Tutorial flag (0 = not tutorial, 1 = tutorial)
+- `tutorialMode` (number) - Tutorial flag (0 = not tutorial, 1 = tutorial)
 - `isTemplate` (number) - Template flag (0 = not template, 1 = template)
 - `hasTimeline` (number) - Timeline feature flag (0 = no timeline, 1 = has timeline)
 - `userID` (number) - ID of sketch creator
@@ -50,7 +50,7 @@ Returned by: `GET /api/sketch/{id}` via `client.getSketch(id)`
 - `templateID` (number | null) - Template ID if based on template, null otherwise
 
 **Notes**:
-- Numeric flags (isDraft, isTutorial, isTemplate, hasTimeline) are returned as numbers (0 or 1), NOT strings
+- Numeric flags (isDraft, tutorialMode, isTemplate, hasTimeline) are returned as numbers (0 or 1), NOT strings
 - IDs (visualID, userID, parentID, engineID, templateID) are returned as numbers, NOT strings
 - Timestamps use MySQL datetime format (YYYY-MM-DD HH:MM:SS), NOT ISO 8601
 - The `videoUpdatedOn` field was added after the initial API documentation
@@ -391,7 +391,7 @@ Per FR-011 (updated in remediation):
 - `userID`, `visualID`, `codeID`, `orderID`, `libraryID`, `engineID`, `parentID`, `templateID`, `curationID`
 
 **All boolean flags returned as numbers (0/1), NOT strings**:
-- `isDraft`, `isTutorial`, `isTemplate`, `hasTimeline`, `status`
+- `isDraft`, `tutorialMode`, `isTemplate`, `hasTimeline`, `status`
 
 **All membership types returned as numbers, NOT strings**:
 - `membershipType`: 0, 1, 2, or 3 (not "0", "1", "2", "3")

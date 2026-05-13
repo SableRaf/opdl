@@ -413,7 +413,7 @@ axios(config)
   "thumbnailUpdatedOn": "2021-03-22 03:16:36",
   "parentID": null,
   "engineID": "1999",
-  "isTutorial": "0",
+  "tutorialMode": "0",
   "isTemplate": "0",
   "hasTimeline": "0",
   "libraries": [

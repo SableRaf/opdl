@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { version } = require(path.join(__dirname, '..', 'package.json'));
 const { parseArgs } = require(path.join(__dirname, '..', 'src', 'cli', 'index.js'));
 const { handleFieldsCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'fields.js'));
@@ -8,6 +10,31 @@ const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'cli',
 const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'user.js'));
 const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'curation.js'));
 const { handleAuthCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'auth.js'));
+
+function isLinkedLocalInstall() {
+  try {
+    const packageRoot = path.resolve(__dirname, '..');
+    const globalNodeModulesRoot = execSync('npm root -g', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+
+    if (!globalNodeModulesRoot) {
+      return false;
+    }
+
+    const globalPackagePath = path.join(globalNodeModulesRoot, 'opdl');
+    const stat = fs.lstatSync(globalPackagePath);
+    if (!stat.isSymbolicLink()) {
+      return false;
+    }
+
+    const linkedTarget = fs.realpathSync(globalPackagePath);
+    return linkedTarget === packageRoot;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Main CLI entry point
@@ -25,6 +52,10 @@ async function main() {
   if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
     showHelp();
     process.exit(0);
+  }
+
+  if (isLinkedLocalInstall()) {
+    console.warn('\x1b[33m[opdl] Running local linked build (npm link). To unlink, run: $ npm unlink -g opdl\x1b[0m');
   }
 
   try {

@@ -23,7 +23,7 @@
  * @property {number} engineID - Processing engine version ID
  * @property {string} engineURL - CDN URL for the selected p5.js/processing.js engine
  * @property {string} fileBase - S3 base URL for sketch assets
- * @property {number} isTutorial - Tutorial flag (0 = not tutorial, 1 = tutorial)
+ * @property {number} tutorialMode - Tutorial flag (0 = not tutorial, 1 = tutorial)
  * @property {number} isTemplate - Template flag (0 = not template, 1 = template)
  * @property {number} hasTimeline - Timeline feature flag (0 = no timeline, 1 = has timeline)
  * @property {number} userID - ID of sketch creator

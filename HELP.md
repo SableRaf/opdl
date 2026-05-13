@@ -772,7 +772,7 @@ When using `opdl sketch info <sketchId>` or `opdl <sketchId> --info`:
 - `parentID` - Parent sketch ID (if forked)
 - `isDraft` - Whether sketch is a draft
 - `isTemplate` - Whether sketch is a template
-- `isTutorial` - Whether sketch is a tutorial
+- `tutorialMode` - Whether sketch is a tutorial
 
 **Note:** The OpenProcessing API does not expose `hearts` or `views` counts in sketch metadata.
 

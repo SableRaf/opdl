@@ -107,7 +107,7 @@ fieldRegistry.register({
     { name: 'parentID', description: 'Parent sketch ID if forked', type: 'number' },
     { name: 'isDraft', description: 'Whether sketch is a draft (0=false, 1=true)', type: 'number' },
     { name: 'isTemplate', description: 'Whether sketch is a template (0=false, 1=true)', type: 'number' },
-    { name: 'isTutorial', description: 'Whether sketch is a tutorial (0=false, 1=true)', type: 'number' },
+    { name: 'tutorialMode', description: 'Whether sketch is a tutorial (0=false, 1=true)', type: 'number' },
   ],
 });
 

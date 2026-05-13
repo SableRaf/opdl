@@ -37,7 +37,7 @@ The clarification session resolved **5 critical ambiguities** related to paginat
    - visualID, title, description, instructions, tags, license
    - isDraft, createdOn, updatedOn, filesUpdatedOn, thumbnailUpdatedOn
    - parentID, engineID, engineURL, fileBase
-   - isTutorial, isTemplate, hasTimeline
+   - tutorialMode, isTemplate, hasTimeline
    - userID, mode, libraries (array)
    ```
 3. Document **User** entity with ALL fields:
@@ -174,7 +174,7 @@ Update `specs/001-refactor-api/tasks.md`:
 
 ```markdown
 - [ ] T003 [P] Create JSDoc type definitions for Sketch entity in src/api/types.js
-  Acceptance: Include ALL fields from openprocessingapi.md: visualID, title, description, instructions, tags, license, isDraft, createdOn, updatedOn, filesUpdatedOn, thumbnailUpdatedOn, parentID, engineID, engineURL, fileBase, isTutorial, isTemplate, hasTimeline, userID, mode, libraries
+  Acceptance: Include ALL fields from openprocessingapi.md: visualID, title, description, instructions, tags, license, isDraft, createdOn, updatedOn, filesUpdatedOn, thumbnailUpdatedOn, parentID, engineID, engineURL, fileBase, tutorialMode, isTemplate, hasTimeline, userID, mode, libraries
 
 - [ ] T004 [P] Create JSDoc type definitions for User entity in src/api/types.js
   Acceptance: Include ALL fields: userID, fullname, bio, memberSince, website, location, membershipType

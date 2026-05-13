@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:verbose": "TEST_VERBOSE=1 vitest run",
-    "pack:dry-run": "npm pack --dry-run"
+    "pack:dry-run": "npm pack --dry-run",
+    "link": "npm link",
+    "unlink": "npm unlink -g opdl"
   },
   "keywords": [
     "openprocessing",
