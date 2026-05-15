@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { generateIndexHtml } from '../../src/download/htmlGenerator';
+import { generateIndexHtml, DEFAULT_STYLESHEET } from '../../src/download/htmlGenerator';
 
 describe('htmlGenerator', () => {
   const testDir = path.join(__dirname, 'test-html-output');
@@ -203,6 +203,79 @@ describe('htmlGenerator', () => {
       expect(content).toMatch(/<\/body>/);
       expect(content).toMatch(/<\/html>/);
       expect(content).toContain('<meta charset="utf-8"');
+    });
+
+    it('should write default style.css to outputDir', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+      };
+
+      generateIndexHtml(metadata, [], testDir);
+
+      const cssPath = path.join(testDir, 'style.css');
+      expect(fs.existsSync(cssPath)).toBe(true);
+
+      const css = fs.readFileSync(cssPath, 'utf8');
+      expect(css).toBe(DEFAULT_STYLESHEET);
+      expect(css).toContain('body {');
+      expect(css).toContain('margin: 0;');
+      expect(css).toContain('padding: 0;');
+    });
+
+    it('should link default style.css from generated index.html', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+      };
+
+      generateIndexHtml(metadata, [], testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('<link rel="stylesheet" type="text/css" href="style.css">');
+    });
+
+    it('should not inject default stylesheet when any user CSS exists', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+      };
+      const codeParts = [
+        { title: 'theme.css' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('<link rel="stylesheet" type="text/css" href="theme.css">');
+      expect(content).not.toContain('href="style.css"');
+      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+    });
+
+    it('should not inject default stylesheet when a style.css code part exists', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+      };
+      const codeParts = [
+        { title: 'style.css' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      const matches = content.match(/href="style\.css"/g) || [];
+      expect(matches.length).toBe(1);
+    });
+
+    it('should not write index.html or default style.css when codeParts contains index.html', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+      };
+      const codeParts = [
+        { title: 'index.html' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+
+      expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(false);
+      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
     });
 
     it('should filter out code parts without titles', () => {
