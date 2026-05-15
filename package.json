@@ -14,7 +14,8 @@
     "test:verbose": "TEST_VERBOSE=1 vitest run",
     "pack:dry-run": "npm pack --dry-run",
     "link": "npm link",
-    "unlink": "npm unlink -g opdl"
+    "unlink": "npm unlink -g opdl",
+    "audit": "npm audit"
   },
   "keywords": [
     "openprocessing",
