@@ -7,7 +7,7 @@ Complete command reference and documentation for opdl.
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Programmatic API](#programmatic-api)
+- [Authentication](#authentication)
 - [Commands](#commands)
   - [Field Discovery](#field-discovery)
   - [Sketch Commands](#sketch-commands)
@@ -20,6 +20,13 @@ Complete command reference and documentation for opdl.
 - [Examples](#examples)
 - [Field Selection](#field-selection)
 - [Environment Variables](#environment-variables)
+- [Exit Codes](#exit-codes)
+- [Tips and Best Practices](#tips-and-best-practices)
+- [Attribution](#attribution)
+- [Programmatic API](#programmatic-api)
+- [Troubleshooting](#troubleshooting)
+- [Getting Help](#getting-help)
+- [See Also](#see-also)
 
 ## Overview
 
@@ -67,125 +74,45 @@ opdl user sketches @Sableraph
 opdl user @Sableraph --json
 ```
 
-## Programmatic API
+## Authentication
 
-In addition to the CLI, `opdl` can be used as a library in your Node.js projects.
+Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens`.
 
-### Simple Download
+### Save your token (recommended)
 
-```javascript
-const opdl = require('opdl');
-
-(async () => {
-  const result = await opdl('2063664', {
-    outputDir: './sketches',
-    quiet: true
-  });
-
-  if (result.success) {
-    console.log(`Downloaded: ${result.sketchInfo.title}`);
-  } else {
-    console.error(`Error: ${result.sketchInfo.error}`);
-  }
-})();
+```bash
+opdl auth --token YOUR_API_TOKEN
 ```
 
-### OpenProcessing API Client
+This writes the token to `~/.opdlrc` so every subsequent `opdl` command picks it up automatically.
 
-For direct access to the OpenProcessing API, use the `OpenProcessingClient` class:
-
-```javascript
-const { OpenProcessingClient } = require('opdl');
-
-(async () => {
-  const client = new OpenProcessingClient();
-  // Or with API key: new OpenProcessingClient('your-api-key')
-
-  // --- Block A: sketch + author lookup ---
-  // Get sketch details
-  const sketch = await client.getSketch(2063664);
-  console.log(`${sketch.title} by ${sketch.userID}`);
-
-  // sketch.userID comes from the API response; the @username form is the
-  // preferred way to look up a user when you already have a username.
-  const author = await client.getUser(sketch.userID);
-  console.log(`Author: ${author.fullname}`);
-
-  // Get sketch code (getSketchCode returns an array directly)
-  const code = await client.getSketchCode(2063664);
-  console.log('Files:', code.map(f => f.title));
-
-  // Get popular tags
-  const tags = await client.getTags({ duration: 'thisMonth' });
-
-  // --- Block B: direct user lookup by @username (independent of Block A) ---
-  const user = await client.getUser('@Sableraph');
-  const sketches = await client.getUserSketches('@Sableraph', { limit: 10 });
-})();
+```bash
+opdl auth            # check token status
+opdl auth --clear    # remove saved token
 ```
 
-### API Client Methods
+### Environment variable
 
-**Sketch Methods:**
-- `getSketch(id)` - Get sketch metadata
-- `getSketchCode(id)` - Get sketch code files
-- `getSketchFiles(id)` - Get sketch asset files
-- `getSketchLibraries(id)` - Get sketch libraries
-- `getSketchForks(id, options?)` - Get sketch forks (with pagination)
-- `getSketchHearts(id, options?)` - Get users who hearted the sketch (with pagination)
-
-**User Methods:**
-- `getUser(id)` - Get user profile
-- `getUserSketches(id, options?)` - Get user's sketches (with pagination)
-- `getUserFollowers(id, options?)` - Get user's followers (with pagination)
-- `getUserFollowing(id, options?)` - Get users being followed (with pagination)
-- `getUserHearts(id, options?)` - Get sketches hearted by user (with pagination)
-
-**Curation Methods:**
-- `getCuration(id)` - Get curation metadata
-- `getCurationSketches(id, options?)` - Get sketches in curation (with pagination)
-
-**Tag Methods:**
-- `getTags(options?)` - Get popular tags by duration ('thisWeek', 'thisMonth', 'thisYear', 'anytime')
-
-**Pagination Options:**
-All list methods accept an optional `options` parameter:
-- `limit` - Number of results (1-100, default: 20)
-- `offset` - Number of results to skip (default: 0)
-- `sort` - Sort order ('asc' or 'desc', default: 'desc')
-
-**Error Handling:**
-```javascript
-try {
-  const sketch = await client.getSketch(123);
-} catch (error) {
-  if (error.status === 429) {
-    console.error('Rate limit exceeded: 40 calls/minute');
-  } else if (error.status === 404) {
-    console.error('Sketch not found');
-  } else {
-    console.error('API error:', error.message);
-  }
-}
+```bash
+export OP_API_KEY=YOUR_API_TOKEN
+opdl 2063664
 ```
 
-**Rate Limiting:**
-The OpenProcessing API has a rate limit of 40 calls per minute. When exceeded, the client will throw an error with status 429 and a descriptive message including retry guidance.
+Useful for CI/CD pipelines or when you prefer not to write the token to disk.
 
-### Download Service
+### One-off flag
 
-For advanced download workflows, use the `DownloadService`:
-
-```javascript
-const { OpenProcessingClient } = require('opdl');
-const { DownloadService } = require('opdl/src/download/service');
-
-const client = new OpenProcessingClient();
-const service = new DownloadService(client);
-
-const sketchInfo = await service.getCompleteSketchInfo(2063664);
-console.log('Complete info:', sketchInfo);
+```bash
+opdl 2063664 --token YOUR_API_TOKEN
 ```
+
+### Resolution order
+
+When a command runs, the token is resolved in this priority order:
+
+1. `--token` flag (highest)
+2. `OP_API_KEY` environment variable
+3. `token` in `~/.opdlrc`
 
 ## Commands
 
@@ -889,6 +816,130 @@ opdl user sketches 1 --json | jq 'sort_by(.createdOn) | reverse'
 
 # Extract specific fields from sketch info
 opdl sketch info 1142958 --json | jq '{title, license, mode}'
+```
+
+## Attribution
+
+All downloads preserve the original licensing information. `LICENSE` reflects Creative Commons licenses when provided, and `OPENPROCESSING.md` records metadata, tags, and library dependencies. Attribution comments at the top of each code file explain the sketch origin and link back to OpenProcessing.
+
+## Programmatic API
+
+In addition to the CLI, `opdl` can be used as a library in your Node.js projects.
+
+### Simple Download
+
+```javascript
+const opdl = require('opdl');
+
+(async () => {
+  const result = await opdl('2063664', {
+    outputDir: './sketches',
+    quiet: true
+  });
+
+  if (result.success) {
+    console.log(`Downloaded: ${result.sketchInfo.title}`);
+  } else {
+    console.error(`Error: ${result.sketchInfo.error}`);
+  }
+})();
+```
+
+### OpenProcessing API Client
+
+For direct access to the OpenProcessing API, use the `OpenProcessingClient` class:
+
+```javascript
+const { OpenProcessingClient } = require('opdl');
+
+(async () => {
+  const client = new OpenProcessingClient();
+  // Or with API key: new OpenProcessingClient('your-api-key')
+
+  // --- Block A: sketch + author lookup ---
+  // Get sketch details
+  const sketch = await client.getSketch(2063664);
+  console.log(`${sketch.title} by ${sketch.userID}`);
+
+  // sketch.userID comes from the API response; the @username form is the
+  // preferred way to look up a user when you already have a username.
+  const author = await client.getUser(sketch.userID);
+  console.log(`Author: ${author.fullname}`);
+
+  // Get sketch code (getSketchCode returns an array directly)
+  const code = await client.getSketchCode(2063664);
+  console.log('Files:', code.map(f => f.title));
+
+  // Get popular tags
+  const tags = await client.getTags({ duration: 'thisMonth' });
+
+  // --- Block B: direct user lookup by @username (independent of Block A) ---
+  const user = await client.getUser('@Sableraph');
+  const sketches = await client.getUserSketches('@Sableraph', { limit: 10 });
+})();
+```
+
+### API Client Methods
+
+**Sketch Methods:**
+- `getSketch(id)` - Get sketch metadata
+- `getSketchCode(id)` - Get sketch code files
+- `getSketchFiles(id)` - Get sketch asset files
+- `getSketchLibraries(id)` - Get sketch libraries
+- `getSketchForks(id, options?)` - Get sketch forks (with pagination)
+- `getSketchHearts(id, options?)` - Get users who hearted the sketch (with pagination)
+
+**User Methods:**
+- `getUser(id)` - Get user profile
+- `getUserSketches(id, options?)` - Get user's sketches (with pagination)
+- `getUserFollowers(id, options?)` - Get user's followers (with pagination)
+- `getUserFollowing(id, options?)` - Get users being followed (with pagination)
+- `getUserHearts(id, options?)` - Get sketches hearted by user (with pagination)
+
+**Curation Methods:**
+- `getCuration(id)` - Get curation metadata
+- `getCurationSketches(id, options?)` - Get sketches in curation (with pagination)
+
+**Tag Methods:**
+- `getTags(options?)` - Get popular tags by duration ('thisWeek', 'thisMonth', 'thisYear', 'anytime')
+
+**Pagination Options:**
+All list methods accept an optional `options` parameter:
+- `limit` - Number of results (1-100, default: 20)
+- `offset` - Number of results to skip (default: 0)
+- `sort` - Sort order ('asc' or 'desc', default: 'desc')
+
+**Error Handling:**
+```javascript
+try {
+  const sketch = await client.getSketch(123);
+} catch (error) {
+  if (error.status === 429) {
+    console.error('Rate limit exceeded: 40 calls/minute');
+  } else if (error.status === 404) {
+    console.error('Sketch not found');
+  } else {
+    console.error('API error:', error.message);
+  }
+}
+```
+
+**Rate Limiting:**
+The OpenProcessing API has a rate limit of 40 calls per minute. When exceeded, the client will throw an error with status 429 and a descriptive message including retry guidance.
+
+### Download Service
+
+For advanced download workflows, use the `DownloadService`:
+
+```javascript
+const { OpenProcessingClient } = require('opdl');
+const { DownloadService } = require('opdl/src/download/service');
+
+const client = new OpenProcessingClient();
+const service = new DownloadService(client);
+
+const sketchInfo = await service.getCompleteSketchInfo(2063664);
+console.log('Complete info:', sketchInfo);
 ```
 
 ## Troubleshooting
