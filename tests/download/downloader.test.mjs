@@ -342,6 +342,100 @@ describe('downloader', () => {
 
       const indexFiles = fs.readdirSync(testDir).filter(f => f === 'index.html');
       expect(indexFiles.length).toBe(1);
+      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+    });
+
+    it('should not overwrite an existing index.html code part for non-html mode', async () => {
+      const originalHtml = '<html><body>user index</body></html>';
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        codeParts: [
+          { title: 'index.html', code: originalHtml },
+        ],
+        files: [],
+        metadata: {
+          mode: 'p5js',
+          engineURL: 'https://example.com/p5.js',
+        },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+      expect(content).toBe(originalHtml);
+      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+    });
+
+    it('should not write default style.css when a user CSS code part exists', async () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        codeParts: [
+          { title: 'sketch.js', code: 'test' },
+          { title: 'theme.css', code: 'body { color: red; }' },
+        ],
+        files: [],
+        metadata: {
+          mode: 'p5js',
+          engineURL: 'https://example.com/p5.js',
+        },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(true);
+      const themeContent = fs.readFileSync(path.join(testDir, 'theme.css'), 'utf8');
+      expect(themeContent).toBe('body { color: red; }');
+      const html = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+      expect(html).toContain('href="theme.css"');
+      expect(html).not.toContain('href="style.css"');
+    });
+
+    it('should write default style.css for non-html mode sketches', async () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        codeParts: [
+          { title: 'sketch.js', code: 'test' },
+        ],
+        files: [],
+        metadata: {
+          mode: 'p5js',
+          engineURL: 'https://example.com/p5.js',
+        },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(true);
     });
 
     it('should create LICENSE file when enabled', async () => {
