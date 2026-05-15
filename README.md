@@ -95,6 +95,8 @@ See the [documentation](HELP.md) file for a full list of CLI options and flags.
 
 ## Output Structure
 
+When you download a sketch, `opdl` creates a new directory with the following structure:
+
 ```
 sketch_{id}/
 ├── index.html             # Generated HTML for JS/CSS sketches
