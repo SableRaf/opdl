@@ -39,7 +39,19 @@ bun install -g opdl
 
 ## Authentication
 
-Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens`.
+Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens` and create a new token.
+
+You can pass the token with your command using the `--token` flag:
+
+```bash
+opdl 2063664 --token YOUR_API_TOKEN
+```
+
+Or, to save it for future use, set it as an environment variable:
+
+```bash
+export OP_API_KEY=YOUR_API_TOKEN
+```
 
 See the [documentation](HELP.md#authentication) for details on how to use your API token with `opdl`.
 

@@ -76,7 +76,10 @@ opdl user @Sableraph --json
 
 ## Authentication
 
-Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens`.
+Unauthenticated requests to the OpenProcessing API are heavily rate limited. A Bearer token is strongly recommended. Generate one from your OpenProcessing account settings: go to `Profile` > `Edit Profile` > `API Tokens` and create a new token. 
+
+- Toggle "Private Data Access" if you need to access your own sketches that are not public.
+- Toggle "Write Access" if you want to create or modify sketches (coming soon).
 
 ### Save your token (recommended)
 
