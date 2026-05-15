@@ -12,7 +12,8 @@ Download sketch ID `2063664` to a folder named `sketch_2063664`:
 npx opdl 2063664
 ```
 
-> [!NOTE] Since v2 of the OpenProcessing API, unauthenticated requests are heavily rate limited. A Bearer token is recommended for regular use (see [Authentication](#authentication)).
+> [!NOTE] 
+> Since v2 of the OpenProcessing API, unauthenticated requests are heavily rate limited. A Bearer token is recommended for regular use (see [Authentication](#authentication)).
 
 ## Installation
 
