@@ -10,6 +10,7 @@ const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'cli',
 const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'user.js'));
 const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'curation.js'));
 const { handleAuthCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'auth.js'));
+const c = require(path.join(__dirname, '..', 'src', 'cli', 'colors.js'));
 
 function isLinkedLocalInstall() {
   try {
@@ -55,7 +56,7 @@ async function main() {
   }
 
   if (isLinkedLocalInstall()) {
-    console.warn('\x1b[33m[opdl] Running local linked build (npm link). To unlink, run: $ npm unlink -g opdl\x1b[0m');
+    console.warn(c.yellow('[opdl] Running local linked build (npm link). To unlink, run: $ npm unlink -g opdl'));
   }
 
   try {
@@ -113,96 +114,104 @@ async function main() {
  * Display help information
  */
 function showHelp() {
+  const bin = c.green;
+  const cmd = (s) => c.bold(s);
+  const flag = c.cyan;
+  const arg = c.yellow;
+  const h = (s) => c.bold(s);
+  const sub = (s) => c.bold(s);
+  const dim = c.dim;
+
   console.log(`
-opdl - OpenProcessing Downloader CLI
+${c.bold('opdl')} - OpenProcessing Downloader CLI
 
-USAGE:
-  opdl <command> [options]
-  opdl --version                        Display version number
-  opdl --help                           Display this help message
+${h('USAGE:')}
+  ${bin('opdl')} ${arg('<command>')} ${arg('[options]')}
+  ${bin('opdl')} ${flag('--version')}                        Display version number
+  ${bin('opdl')} ${flag('--help')}                           Display this help message
 
-COMMANDS:
+${h('COMMANDS:')}
 
-  Authentication:
-    opdl auth --token <token>             Save API token to ~/.opdlrc
-    opdl auth --clear                     Remove saved token
-    opdl auth                             Show token status
+  ${sub('Authentication:')}
+    ${bin('opdl')} ${cmd('auth')} ${flag('--token')} ${arg('<token>')}             Save API token to ~/.opdlrc
+    ${bin('opdl')} ${cmd('auth')} ${flag('--clear')}                     Remove saved token
+    ${bin('opdl')} ${cmd('auth')}                             Show token status
 
-  Field Discovery:
-    opdl fields                           List all available field sets
-    opdl fields <fieldSet>                Show fields for a specific field set
+  ${sub('Field Discovery:')}
+    ${bin('opdl')} ${cmd('fields')}                           List all available field sets
+    ${bin('opdl')} ${cmd('fields')} ${arg('<fieldSet>')}                Show fields for a specific field set
 
-  Sketch Commands:
-    opdl <sketchId> [options]             Download sketch (shortcut)
-    opdl sketch download <id> [options]   Download sketch files
-    opdl sketch info <id> [options]       Display sketch metadata
-    opdl <sketchId> --info <fields>       Display selected sketch fields
+  ${sub('Sketch Commands:')}
+    ${bin('opdl')} ${arg('<sketchId>')} ${arg('[options]')}             Download sketch (shortcut)
+    ${bin('opdl')} ${cmd('sketch download')} ${arg('<id>')} ${arg('[options]')}   Download sketch files
+    ${bin('opdl')} ${cmd('sketch info')} ${arg('<id>')} ${arg('[options]')}       Display sketch metadata
+    ${bin('opdl')} ${arg('<sketchId>')} ${flag('--info')} ${arg('<fields>')}       Display selected sketch fields
 
-  User Commands:
-    Users can be identified by @username (preferred) or numeric userID (deprecated).
-    opdl user <user> [options]            Display user information
-    opdl user sketches <user> [options]   List user's sketches
-    opdl user followers <user> [opts]     List user's followers
-    opdl user following <user> [opts]     List users being followed
+  ${sub('User Commands:')}
+    ${dim('Users can be identified by @username (preferred) or numeric userID (deprecated).')}
+    ${bin('opdl')} ${cmd('user')} ${arg('<user>')} ${arg('[options]')}            Display user information
+    ${bin('opdl')} ${cmd('user sketches')} ${arg('<user>')} ${arg('[options]')}   List user's sketches
+    ${bin('opdl')} ${cmd('user followers')} ${arg('<user>')} ${arg('[opts]')}     List user's followers
+    ${bin('opdl')} ${cmd('user following')} ${arg('<user>')} ${arg('[opts]')}     List users being followed
 
-  Curation Commands:
-    opdl curation <id> [options]          Display curation information
-    opdl curation sketches <id> [options] List sketches in curation
+  ${sub('Curation Commands:')}
+    ${bin('opdl')} ${cmd('curation')} ${arg('<id>')} ${arg('[options]')}          Display curation information
+    ${bin('opdl')} ${cmd('curation sketches')} ${arg('<id>')} ${arg('[options]')} List sketches in curation
 
-OPTIONS:
+${h('OPTIONS:')}
 
-  Output Control:
-    --info <fields|all>    Select specific fields to display (comma-separated)
-    --json                 Output in JSON format
-    --quiet                Suppress output messages
+  ${sub('Output Control:')}
+    ${flag('--info')} ${arg('<fields|all>')}    Select specific fields to display (comma-separated)
+    ${flag('--json')}                 Output in JSON format
+    ${flag('--quiet')}                Suppress output messages
 
-  List Options (for list commands):
-    --limit <n>            Limit number of results
-    --offset <n>           Skip first n results
-    --sort <asc|desc>      Sort order
+  ${sub('List Options (for list commands):')}
+    ${flag('--limit')} ${arg('<n>')}            Limit number of results
+    ${flag('--offset')} ${arg('<n>')}           Skip first n results
+    ${flag('--sort')} ${arg('<asc|desc>')}      Sort order
 
-  Authentication:
-    --token <value>        API bearer token (overrides OP_API_KEY and ~/.opdlrc)
+  ${sub('Authentication:')}
+    ${flag('--token')} ${arg('<value>')}        API bearer token (overrides OP_API_KEY and ~/.opdlrc)
 
-  Download Options (for sketch download):
-    --outputDir <path>     Output directory for files
-    --downloadThumbnail    Download thumbnail image
-    --saveMetadata         Save metadata JSON file
-    --skipAssets           Skip downloading asset files
-    --vite                 Set up Vite project structure
-    --run                  Automatically run dev server after download
+  ${sub('Download Options (for sketch download):')}
+    ${flag('--outputDir')} ${arg('<path>')}     Output directory for files
+    ${flag('--downloadThumbnail')}    Download thumbnail image
+    ${flag('--saveMetadata')}         Save metadata JSON file
+    ${flag('--skipAssets')}           Skip downloading asset files
+    ${flag('--vite')}                 Set up Vite project structure
+    ${flag('--run')}                  Automatically run dev server after download
 
-EXAMPLES:
+${h('EXAMPLES:')}
 
-  # Field discovery
-  opdl fields
-  opdl fields sketch
-  opdl fields user.sketches
+  ${dim('# Field discovery')}
+  ${dim('opdl fields')}
+  ${dim('opdl fields sketch')}
+  ${dim('opdl fields user.sketches')}
 
-  # Sketch operations
-  opdl 1142958 --info title,license,libraries
-  opdl sketch download 1142958 --outputDir=./projects
-  opdl 1142958 --outputDir=./projects --downloadThumbnail
-  opdl 1142958 --vite
-  opdl 1142958 --vite --run
-  opdl 1142958 --run
+  ${dim('# Sketch operations')}
+  ${dim('opdl 1142958 --info title,license,libraries')}
+  ${dim('opdl sketch download 1142958 --outputDir=./projects')}
+  ${dim('opdl 1142958 --outputDir=./projects --downloadThumbnail')}
+  ${dim('opdl 1142958 --vite')}
+  ${dim('opdl 1142958 --vite --run')}
+  ${dim('opdl 1142958 --run')}
 
-  # User operations
-  opdl user @Sableraph --info fullname,website,createdOn
-  opdl user sketches @Sableraph --limit 10 --info visualID,title
-  opdl user followers @Sableraph --json
+  ${dim('# User operations')}
+  ${dim('opdl user @Sableraph --info fullname,website,createdOn')}
+  ${dim('opdl user sketches @Sableraph --limit 10 --info visualID,title')}
+  ${dim('opdl user followers @Sableraph --json')}
 
-  # Curation operations
-  opdl curation 12 --info title,description
-  opdl curation sketches 12 --limit 20 --sort desc
+  ${dim('# Curation operations')}
+  ${dim('opdl curation 12 --info title,description')}
+  ${dim('opdl curation sketches 12 --limit 20 --sort desc')}
 
-ENVIRONMENT:
-  OP_API_KEY    OpenProcessing API bearer token
+${h('ENVIRONMENT:')}
+  ${arg('OP_API_KEY')}    OpenProcessing API bearer token
 
-TOKEN RESOLUTION (highest to lowest priority):
-  1. --token <value> flag
-  2. OP_API_KEY environment variable
-  3. token field in ~/.opdlrc (set via: opdl auth --token <value>)
+${h('TOKEN RESOLUTION')} ${dim('(highest to lowest priority)')}:
+  1. ${flag('--token')} ${arg('<value>')} flag
+  2. ${arg('OP_API_KEY')} environment variable
+  3. ${arg('token')} field in ~/.opdlrc (set via: ${bin('opdl')} ${cmd('auth')} ${flag('--token')} ${arg('<value>')})
 
 For more information, visit: https://github.com/SableRaf/opdl
 `);
