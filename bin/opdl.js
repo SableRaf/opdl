@@ -139,10 +139,11 @@ COMMANDS:
     opdl <sketchId> --info <fields>       Display selected sketch fields
 
   User Commands:
-    opdl user <userId> [options]          Display user information
-    opdl user sketches <userId> [options] List user's sketches
-    opdl user followers <userId> [opts]   List user's followers
-    opdl user following <userId> [opts]   List users being followed
+    Users can be identified by @username (preferred) or numeric userID (deprecated).
+    opdl user <user> [options]            Display user information
+    opdl user sketches <user> [options]   List user's sketches
+    opdl user followers <user> [opts]     List user's followers
+    opdl user following <user> [opts]     List users being followed
 
   Curation Commands:
     opdl curation <id> [options]          Display curation information
@@ -187,9 +188,9 @@ EXAMPLES:
   opdl 1142958 --run
 
   # User operations
-  opdl user 1 --info fullname,website,createdOn
-  opdl user sketches 1 --limit 10 --info visualID,title
-  opdl user followers 1 --json
+  opdl user @Sableraph --info fullname,website,createdOn
+  opdl user sketches @Sableraph --limit 10 --info visualID,title
+  opdl user followers @Sableraph --json
 
   # Curation operations
   opdl curation 12 --info title,description

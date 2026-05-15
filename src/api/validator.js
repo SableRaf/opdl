@@ -265,6 +265,66 @@ const validateCuration = (responseData) => {
 };
 
 /**
+ * Strict positive integer check.
+ * Numbers must be integers >= 1. Strings must match /^[1-9]\d*$/ (no leading zeros, no decimals, no exponent).
+ * @param {*} id
+ * @returns {boolean}
+ */
+const isStrictPositiveIntegerId = (id) => {
+  if (typeof id === 'number') {
+    return Number.isInteger(id) && id >= 1;
+  }
+  if (typeof id === 'string') {
+    return /^[1-9]\d*$/.test(id);
+  }
+  return false;
+};
+
+/**
+ * Valid username segment for OpenProcessing API path: must start with a single '@'
+ * followed by at least one non-'@'/non-whitespace character.
+ * @param {*} id
+ * @returns {boolean}
+ */
+const isValidUsernameSegment = (id) => {
+  if (typeof id !== 'string') return false;
+  return /^@[^@\s]+$/.test(id);
+};
+
+/**
+ * Validate a user identifier (either positive integer userID or @username).
+ * @param {*} id
+ * @returns {ValidationResult & { data: { value: number|string, isNumeric: boolean } }}
+ */
+const validateUserIdentifier = (id) => {
+  if (isStrictPositiveIntegerId(id)) {
+    return {
+      valid: true,
+      reason: null,
+      message: '',
+      data: { value: Number(id), isNumeric: true },
+      canRetry: false,
+    };
+  }
+  if (isValidUsernameSegment(id)) {
+    return {
+      valid: true,
+      reason: null,
+      message: '',
+      data: { value: id, isNumeric: false },
+      canRetry: false,
+    };
+  }
+  return {
+    valid: false,
+    reason: VALIDATION_REASONS.INVALID_ID,
+    message: 'User identifier must be a username with "@" prefix (e.g. "@Sableraph") or a positive integer userID.',
+    data: id,
+    canRetry: false,
+  };
+};
+
+/**
  * Validate an ID value
  * ID should be a positive integer
  * @param {*} id - ID to validate
@@ -413,6 +473,9 @@ module.exports = {
   validateUser,
   validateCuration,
   validateId,
+  validateUserIdentifier,
+  isStrictPositiveIntegerId,
+  isValidUsernameSegment,
   validateListOptions,
   validateTagsOptions,
   validateResponse,

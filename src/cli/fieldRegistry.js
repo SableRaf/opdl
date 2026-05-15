@@ -106,8 +106,16 @@ fieldRegistry.register({
     { name: 'userID', description: 'Author user ID', type: 'number' },
     { name: 'parentID', description: 'Parent sketch ID if forked', type: 'number' },
     { name: 'isDraft', description: 'Whether sketch is a draft (0=false, 1=true)', type: 'number' },
+    { name: 'isPrivate', description: 'Whether sketch is private (0=false, 1=true)', type: 'number' },
     { name: 'isTemplate', description: 'Whether sketch is a template (0=false, 1=true)', type: 'number' },
     { name: 'tutorialMode', description: 'Whether sketch is a tutorial (0=false, 1=true)', type: 'number' },
+    { name: 'username', description: 'Author username (preferred over userID)', type: 'string' },
+    { name: 'engineID', description: 'Rendering engine ID', type: 'number' },
+    { name: 'engineURL', description: 'Rendering engine URL', type: 'string' },
+    { name: 'fileBase', description: 'Base path for sketch files', type: 'string' },
+    { name: 'filesUpdatedOn', description: 'Date files were last updated', type: 'date' },
+    { name: 'thumbnailUpdatedOn', description: 'Date thumbnail was last updated', type: 'date' },
+    { name: 'videoUpdatedOn', description: 'Date video was last updated (null if no video)', type: 'date' },
   ],
 });
 
@@ -117,12 +125,15 @@ fieldRegistry.register({
   description: 'Fields available for user objects',
   endpoint: '/api/user/:id',
   fields: [
-    { name: 'userID', description: 'User ID', type: 'number' },
+    { name: 'userID', description: 'User ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Username (preferred identifier)', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'website', description: 'Website URL', type: 'string' },
     { name: 'location', description: 'Location', type: 'string' },
     { name: 'bio', description: 'User biography', type: 'string' },
     { name: 'createdOn', description: 'Account creation date', type: 'date' },
+    { name: 'membershipType', description: 'Membership type (enum: 0=free, 1=plus, 2=pro, 3=educator)', type: 'number' },
+    { name: 'totalSketches', description: 'Total number of sketches', type: 'number' },
   ],
 });
 
@@ -136,7 +147,8 @@ fieldRegistry.register({
     { name: 'title', description: 'Curation title', type: 'string' },
     { name: 'description', description: 'Curation description', type: 'string' },
     { name: 'createdOn', description: 'Creation date', type: 'date' },
-    { name: 'userID', description: 'Creator user ID', type: 'number' },
+    { name: 'userID', description: 'Creator user ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Creator username (preferred identifier)', type: 'string' },
   ],
 });
 
@@ -151,7 +163,13 @@ fieldRegistry.register({
     { name: 'description', description: 'Sketch description', type: 'string' },
     { name: 'instructions', description: 'Usage instructions', type: 'string' },
     { name: 'createdOn', description: 'Creation date', type: 'date' },
+    { name: 'updatedOn', description: 'Last modification date', type: 'date' },
     { name: 'mode', description: 'Sketch mode (p5js, processingjs, html, applet)', type: 'string' },
+    { name: 'userID', description: 'Author user ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Author username (preferred identifier)', type: 'string' },
+    { name: 'fullname', description: 'Author full name', type: 'string' },
+    { name: 'isDraft', description: 'Whether sketch is a draft (0=false, 1=true)', type: 'number' },
+    { name: 'isPrivate', description: 'Whether sketch is private (0=false, 1=true)', type: 'number' },
   ],
 });
 
@@ -161,10 +179,11 @@ fieldRegistry.register({
   description: 'Fields available for user followers list',
   endpoint: '/api/user/:id/followers',
   fields: [
-    { name: 'userID', description: 'User ID', type: 'number' },
+    { name: 'userID', description: 'User ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Username (preferred identifier)', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'followedOn', description: 'Date when follow occurred', type: 'date' },
-    { name: 'membershipType', description: 'Membership type (enum: 0=free, 1=supporter, 2=patron, 3=unknown)', type: 'number' },
+    { name: 'membershipType', description: 'Membership type (enum: 0=free, 1=plus, 2=pro, 3=educator)', type: 'number' },
   ],
 });
 
@@ -174,10 +193,11 @@ fieldRegistry.register({
   description: 'Fields available for user following list',
   endpoint: '/api/user/:id/following',
   fields: [
-    { name: 'userID', description: 'User ID', type: 'number' },
+    { name: 'userID', description: 'User ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Username (preferred identifier)', type: 'string' },
     { name: 'fullname', description: 'Full name', type: 'string' },
     { name: 'followedOn', description: 'Date when follow occurred', type: 'date' },
-    { name: 'membershipType', description: 'Membership type (enum: 0=free, 1=supporter, 2=patron, 3=unknown)', type: 'number' },
+    { name: 'membershipType', description: 'Membership type (enum: 0=free, 1=plus, 2=pro, 3=educator)', type: 'number' },
   ],
 });
 
@@ -197,9 +217,10 @@ fieldRegistry.register({
     { name: 'submittedOn', description: 'Submission date', type: 'date' },
     { name: 'thumbnailUpdatedOn', description: 'Thumbnail update date', type: 'date' },
     { name: 'videoUpdatedOn', description: 'Video update date (null if no video)', type: 'date' },
-    { name: 'userID', description: 'Author user ID', type: 'number' },
+    { name: 'userID', description: 'Author user ID (deprecated; prefer username)', type: 'number' },
+    { name: 'username', description: 'Author username (preferred identifier)', type: 'string' },
     { name: 'fullname', description: 'Author full name', type: 'string' },
-    { name: 'membershipType', description: 'Author membership type (enum: 0=free, 1=supporter, 2=patron, 3=unknown)', type: 'number' },
+    { name: 'membershipType', description: 'Author membership type (enum: 0=free, 1=plus, 2=pro, 3=educator)', type: 'number' },
     { name: 'status', description: 'Sketch status (0=hidden/draft, 1=published/visible)', type: 'number' },
   ],
 });

@@ -1,8 +1,11 @@
 const { OpenProcessingClient } = require('../../api/client');
 const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
-const { validateId } = require('../../api/validator');
+const { validateUserIdentifier } = require('../../api/validator');
 const { getToken } = require('../../config');
+
+const DEPRECATION_WARNING =
+  '\x1b[33m[opdl] Warning: looking up users by numeric userID is deprecated by OpenProcessing and will be removed in the future. Use the @username form instead (e.g. "opdl user @Sableraph"). Run "opdl --help" for command syntax.\x1b[0m';
 
 /**
  * Handle user-related commands
@@ -14,12 +17,16 @@ const { getToken } = require('../../config');
 async function handleUserCommand(args) {
   const client = new OpenProcessingClient(getToken(args.options.token));
 
-  // Validate user ID
-  const idValidation = validateId(args.id);
+  // Validate user identifier (accepts @username or numeric userID)
+  const idValidation = validateUserIdentifier(args.id);
   if (!idValidation.valid) {
     throw new Error(idValidation.message);
   }
-  const userId = idValidation.data;
+  const userId = idValidation.data.value;
+
+  if (idValidation.data.isNumeric && !args.options.quiet) {
+    console.warn(DEPRECATION_WARNING);
+  }
 
   const listOptions = {
     limit: args.options.limit,
