@@ -3,9 +3,11 @@ const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
 const { validateUserIdentifier } = require('../../api/validator');
 const { getToken } = require('../../config');
+const c = require('../colors');
 
-const DEPRECATION_WARNING =
-  '\x1b[33m[opdl] Warning: looking up users by numeric userID is deprecated by OpenProcessing and will be removed in the future. Use the @username form instead (e.g. "opdl user @Sableraph"). Run "opdl --help" for command syntax.\x1b[0m';
+const DEPRECATION_WARNING = c.yellow(
+  '[opdl] Warning: looking up users by numeric userID is deprecated by OpenProcessing and will be removed in the future. Use the @username form instead (e.g. "opdl user @Sableraph"). Run "opdl --help" for command syntax.'
+);
 
 /**
  * Handle user-related commands
