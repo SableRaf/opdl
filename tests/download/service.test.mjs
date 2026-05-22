@@ -313,5 +313,61 @@ describe('DownloadService', () => {
       console.warn = originalWarn;
       assert.equal(warnCalled, false);
     });
+
+    describe('tutorial mode', () => {
+      it('attaches tutorial bundle when sketch.tutorialMode is set', async () => {
+        mockClient.getSketch = async () => ({
+          visualID: 1, title: 'T', mode: 'p5js', userID: 9, tutorialMode: 1,
+        });
+        mockClient.getUser = async () => ({ fullname: 'U' });
+        mockClient.getSketchCode = async () => [];
+        mockClient.getTutorial = async () => ({
+          visualID: 1, totalPages: 1, tutorialMode: 'normal',
+        });
+        mockClient.getTutorialPage = async () => ({
+          markdown: '# hi', codeObjects: [],
+        });
+
+        service = new DownloadService(mockClient);
+        const result = await service.getCompleteSketchInfo(1, { quiet: true });
+
+        assert.ok(result.tutorial);
+        assert.equal(result.tutorial.tutorial.totalPages, 1);
+        assert.equal(result.tutorial.pages.length, 1);
+        assert.deepEqual(result.tutorial.failedPages, []);
+      });
+
+      it('does not attach tutorial bundle when tutorialMode is falsy', async () => {
+        mockClient.getSketch = async () => ({
+          visualID: 1, title: 'T', mode: 'p5js', userID: 9, tutorialMode: 0,
+        });
+        mockClient.getUser = async () => ({ fullname: 'U' });
+        mockClient.getSketchCode = async () => [];
+        mockClient.getTutorial = async () => {
+          throw new Error('should not be called');
+        };
+
+        service = new DownloadService(mockClient);
+        const result = await service.getCompleteSketchInfo(1, { quiet: true });
+
+        assert.equal(result.tutorial, undefined);
+      });
+
+      it('treats tutorial-index failure as non-fatal', async () => {
+        mockClient.getSketch = async () => ({
+          visualID: 1, title: 'T', mode: 'p5js', userID: 9, tutorialMode: 1,
+        });
+        mockClient.getUser = async () => ({ fullname: 'U' });
+        mockClient.getSketchCode = async () => [];
+        mockClient.getTutorial = async () => { throw new Error('index 500'); };
+
+        service = new DownloadService(mockClient);
+        const result = await service.getCompleteSketchInfo(1, { quiet: true });
+
+        assert.equal(result.tutorial, undefined);
+        assert.equal(result.available, true);
+        assert.equal(result.title, 'T');
+      });
+    });
   });
 });

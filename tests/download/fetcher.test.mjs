@@ -349,4 +349,71 @@ describe('fetcher', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('tutorial mode (legacy fetcher path)', () => {
+    function stubBaselineSketch(sketchId, { tutorialMode } = {}) {
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}`)
+        .reply(200, {
+          visualID: sketchId,
+          title: 'T',
+          mode: 'p5js',
+          userID: 9,
+          tutorialMode,
+        });
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}/code`)
+        .reply(200, []);
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}/files?limit=100&offset=0`)
+        .reply(200, []);
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
+        .reply(200, []);
+      nock('https://openprocessing.org')
+        .get(`/api/user/9`)
+        .reply(200, { fullname: 'U' });
+    }
+
+    it('attaches tutorial bundle when metadata.tutorialMode is truthy', async () => {
+      const sketchId = 555;
+      stubBaselineSketch(sketchId, { tutorialMode: 1 });
+      nock('https://openprocessing.org')
+        .get(`/api/tutorial/${sketchId}`)
+        .reply(200, { visualID: sketchId, totalPages: 1, tutorialMode: 'normal' });
+      nock('https://openprocessing.org')
+        .get(`/api/tutorial/${sketchId}/page/1/`)
+        .reply(200, { markdown: '# hi', codeObjects: [] });
+
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
+      expect(result.tutorial).toBeDefined();
+      expect(result.tutorial.tutorial.totalPages).toBe(1);
+      expect(result.tutorial.pages).toHaveLength(1);
+      expect(result.tutorial.failedPages).toEqual([]);
+    });
+
+    it('does not fetch tutorial endpoints when tutorialMode is falsy', async () => {
+      const sketchId = 556;
+      stubBaselineSketch(sketchId, { tutorialMode: 0 });
+      // No nock for /api/tutorial — any call would error.
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
+      expect(result.tutorial).toBeUndefined();
+    });
+
+    it('preserves error.status on 500 page failures (adapter parity)', async () => {
+      const sketchId = 557;
+      stubBaselineSketch(sketchId, { tutorialMode: 'normal' });
+      nock('https://openprocessing.org')
+        .get(`/api/tutorial/${sketchId}`)
+        .reply(200, { visualID: sketchId, totalPages: 1, tutorialMode: 'normal' });
+      nock('https://openprocessing.org')
+        .get(`/api/tutorial/${sketchId}/page/1/`)
+        .reply(500, { message: 'boom' });
+
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
+      expect(result.tutorial.failedPages).toHaveLength(1);
+      expect(result.tutorial.failedPages[0].pageNumber).toBe(1);
+      expect(result.tutorial.failedPages[0].error.status).toBe(500);
+    });
+  });
 });

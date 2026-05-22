@@ -7,11 +7,18 @@ const { writeCodeFile } = require('./codeFileWriter');
 const META_DIR = 'metadata';
 const TUTORIAL_DIR = 'tutorial';
 
+function extractStatus(error) {
+  if (!error) return null;
+  if (typeof error.status === 'number') return error.status;
+  if (typeof error.response?.status === 'number') return error.response.status;
+  return null;
+}
+
 function normalizeFailedPages(failedPages) {
   return (failedPages || []).map((entry) => ({
     pageNumber: entry.pageNumber,
     error: entry.error?.message || String(entry.error || 'Unknown error'),
-    status: entry.error?.status ?? null,
+    status: extractStatus(entry.error),
   }));
 }
 

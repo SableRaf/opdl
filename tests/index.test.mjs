@@ -492,4 +492,79 @@ describe('opdl (integration)', () => {
     const codeContent = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
     expect(codeContent).not.toContain('Downloaded with opdl');
   });
+
+  it('downloads tutorial bundle end-to-end (tutorial/ + metadata/tutorial.json)', async () => {
+    const sketchId = 2798401;
+
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}`)
+      .reply(200, {
+        visualID: sketchId,
+        title: 'Tut Sketch',
+        mode: 'p5js',
+        userID: 7,
+        license: 'by',
+        engineURL: 'https://cdn.com/p5.js',
+        tutorialMode: 1,
+      });
+
+    nock('https://openprocessing.org')
+      .get('/api/user/7')
+      .reply(200, { fullname: 'Tut Author' });
+
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/code`)
+      .reply(200, [{ title: 'sketch.js', code: 'function setup() {}' }]);
+
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/files?limit=100&offset=0`)
+      .reply(200, []);
+
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
+      .reply(200, []);
+
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}`)
+      .reply(200, {
+        visualID: sketchId,
+        tutorialID: 123,
+        totalPages: 2,
+        tutorialMode: 'normal',
+      });
+
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}/page/1/`)
+      .reply(200, { markdown: '# Page 1', codeObjects: [] });
+
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}/page/2/`)
+      .reply(200, {
+        markdown: '# Page 2',
+        codeObjects: [{ title: 'mySketch', code: 'function setup(){}' }],
+      });
+
+    const result = await opdl(sketchId, {
+      outputDir: testDir,
+      downloadAssets: false,
+      downloadThumbnail: false,
+      saveMetadata: true,
+      addSourceComments: false,
+      createLicenseFile: false,
+      createOpMetadata: false,
+      quiet: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(fs.existsSync(path.join(testDir, 'tutorial/page_1/README.md'))).toBe(true);
+    expect(fs.existsSync(path.join(testDir, 'tutorial/page_2/README.md'))).toBe(true);
+    expect(fs.existsSync(path.join(testDir, 'tutorial/page_2/mySketch.js'))).toBe(true);
+
+    const tutorialMeta = JSON.parse(
+      fs.readFileSync(path.join(testDir, 'metadata/tutorial.json'), 'utf8')
+    );
+    expect(tutorialMeta.totalPages).toBe(2);
+    expect(tutorialMeta.tutorialMode).toBe('normal');
+    expect(tutorialMeta.failedPages).toEqual([]);
+  });
 });
