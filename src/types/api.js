@@ -29,6 +29,12 @@
  * @property {number} views - Number of views
  * @property {boolean} isPublic - Whether sketch is public
  * @property {boolean} isFeatured - Whether sketch is featured
+ * @property {number|string} [tutorialMode] - Tutorial flag. /api/sketch returns 0|1; /api/tutorial returns "normal"|"singleCode"
+ */
+
+/**
+ * @typedef {import('../api/types').TutorialPage} TutorialPage
+ * @typedef {import('../api/types').TutorialBundle} TutorialBundle
  */
 
 /**

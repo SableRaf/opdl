@@ -4,6 +4,11 @@
  */
 
 const { OpenProcessingClient } = require('../api/client');
+const {
+  fetchTutorialBundle,
+  httpGetViaClient,
+  isTutorialMode,
+} = require('./tutorialFetcher');
 
 /**
  * @typedef {Object} SketchInfo
@@ -117,6 +122,23 @@ class DownloadService {
           // Parent not available - not critical
           if (!quiet) {
             console.warn(`Could not fetch parent sketch: ${error.message}`);
+          }
+        }
+      }
+
+      // 6. If tutorial, fetch tutorial bundle (non-fatal on failure).
+      if (isTutorialMode(sketch.tutorialMode)) {
+        try {
+          const bundle = await fetchTutorialBundle({
+            httpGet: httpGetViaClient(this.client),
+            sketchId: id,
+            quiet,
+            verbose: options.verbose,
+          });
+          sketchInfo.tutorial = bundle;
+        } catch (error) {
+          if (!quiet) {
+            console.warn(`Could not fetch tutorial bundle: ${error.message}`);
           }
         }
       }

@@ -1,5 +1,10 @@
 const axios = require('axios');
 const { validateSketch, VALIDATION_REASONS, MESSAGES } = require('./api/validator');
+const {
+  fetchTutorialBundle,
+  httpGetViaAxios,
+  isTutorialMode,
+} = require('./download/tutorialFetcher');
 
 const logError = (message, quiet) => {
   if (!quiet) {
@@ -180,6 +185,20 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
 
   sketchInfo.metadata = sketchInfo.metadata || {};
   sketchInfo.metadata.libraries = sketchInfo.metadata.libraries || sketchInfo.libraries;
+
+  if (isTutorialMode(sketchInfo.metadata.tutorialMode)) {
+    try {
+      const bundle = await fetchTutorialBundle({
+        httpGet: httpGetViaAxios({ token, quiet }),
+        sketchId: parsedId,
+        quiet,
+        verbose: options.verbose,
+      });
+      sketchInfo.tutorial = bundle;
+    } catch (error) {
+      logError(`Error fetching tutorial bundle for sketch ${parsedId}: ${error.message}`, quiet);
+    }
+  }
 
   return sketchInfo;
 };

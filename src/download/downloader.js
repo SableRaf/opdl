@@ -4,9 +4,10 @@ const axios = require('axios');
 
 const { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } = require('../utils');
 const { generateIndexHtml } = require('./htmlGenerator');
-const { buildCommentBlock } = require('./codeAttributor');
 const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
+const { writeCodeFile } = require('./codeFileWriter');
+const { writeTutorial } = require('./tutorialWriter');
 
 const META_DIR = 'metadata';
 const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
@@ -24,29 +25,20 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   const savedCodeFiles = [];
   const sanitizedCodeParts = [];
   const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
+  const rootUsedNames = new Set();
 
   for (let index = 0; index < codeParts.length; index += 1) {
-    const codeBlock = codeParts[index];
-    const name = codeBlock.title || `part_${index + 1}`;
-    let codeFileName = path.basename(name);
-    let fileExtension = path.extname(codeFileName);
-
-    if (!fileExtension) {
-      fileExtension = '.js';
-      codeFileName += fileExtension;
-    }
-
-    codeFileName = sanitizeFilename(codeFileName) || `part_${index + 1}.js`;
-    const codeFilePath = path.join(outputDir, codeFileName);
-    let fileContent = codeBlock.code || '';
-    if (shouldAddSourceComments && !fileContent.includes('Downloaded with opdl')) {
-      const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
-      fileContent = `${commentBlock}${fileContent.startsWith('\n') ? '' : '\n'}${fileContent}`;
-    }
-    fs.writeFileSync(codeFilePath, fileContent, 'utf8');
-
+    const { codeFilePath, sanitizedCodeBlock } = writeCodeFile({
+      outputDir,
+      codeBlock: codeParts[index],
+      index,
+      sketchInfo,
+      addSourceComments: shouldAddSourceComments,
+      fallbackBase: 'part',
+      usedNames: rootUsedNames,
+    });
     savedCodeFiles.push(codeFilePath);
-    sanitizedCodeParts.push({ ...codeBlock, title: codeFileName });
+    sanitizedCodeParts.push(sanitizedCodeBlock);
   }
 
   const assetBaseUrl = sketchInfo.metadata?.fileBase;
@@ -139,6 +131,16 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   if (finalOptions.createOpMetadata) {
     createOpMetadata(sketchInfo, outputDir, finalOptions);
+  }
+
+  if (sketchInfo.tutorial) {
+    try {
+      writeTutorial(sketchInfo.tutorial, outputDir, sketchInfo, finalOptions);
+    } catch (error) {
+      if (!finalOptions.quiet) {
+        console.warn(`opdl: failed to write tutorial bundle: ${error.message}`);
+      }
+    }
   }
 
   // Set up Vite project if requested

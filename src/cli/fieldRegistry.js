@@ -108,7 +108,7 @@ fieldRegistry.register({
     { name: 'isDraft', description: 'Whether sketch is a draft (0=false, 1=true)', type: 'number' },
     { name: 'isPrivate', description: 'Whether sketch is private (0=false, 1=true)', type: 'number' },
     { name: 'isTemplate', description: 'Whether sketch is a template (0=false, 1=true)', type: 'number' },
-    { name: 'tutorialMode', description: 'Whether sketch is a tutorial (0=false, 1=true)', type: 'number' },
+    { name: 'tutorialMode', description: 'Tutorial flag (0/1 from /api/sketch; "normal" or "singleCode" from /api/tutorial)', type: 'string' },
     { name: 'username', description: 'Author username (preferred over userID)', type: 'string' },
     { name: 'engineID', description: 'Rendering engine ID', type: 'number' },
     { name: 'engineURL', description: 'Rendering engine URL', type: 'string' },

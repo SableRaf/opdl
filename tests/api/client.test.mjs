@@ -92,6 +92,41 @@ describe('OpenProcessingClient', () => {
     });
   });
 
+  describe('getTutorial / getTutorialPage', () => {
+    it('returns tutorial index on 200', async () => {
+      const payload = { visualID: 2798401, totalPages: 2, tutorialMode: 'normal' };
+      nock(BASE_URL).get('/api/tutorial/2798401').reply(200, payload);
+      const result = await client.getTutorial(2798401);
+      assert.deepEqual(result, payload);
+    });
+
+    it('throws on { success: false } envelope', async () => {
+      nock(BASE_URL)
+        .get('/api/tutorial/2798401')
+        .reply(200, { success: false, message: 'nope' });
+      await assert.rejects(() => client.getTutorial(2798401), { message: /nope/ });
+    });
+
+    it('propagates 429 through interceptor', async () => {
+      nock(BASE_URL).get('/api/tutorial/2798401').reply(429);
+      await assert.rejects(() => client.getTutorial(2798401), {
+        message: /Rate limit exceeded/,
+      });
+    });
+
+    it('throws on non-2xx (e.g. 500)', async () => {
+      nock(BASE_URL).get('/api/tutorial/2798401/page/1/').reply(500);
+      await assert.rejects(() => client.getTutorialPage(2798401, 1));
+    });
+
+    it('returns tutorial page on 200', async () => {
+      const payload = { markdown: 'hi', codeObjects: [] };
+      nock(BASE_URL).get('/api/tutorial/2798401/page/2/').reply(200, payload);
+      const result = await client.getTutorialPage(2798401, 2);
+      assert.deepEqual(result, payload);
+    });
+  });
+
   describe('getSketchForks', () => {
     it('should fetch sketch forks', async () => {
       const mockForks = [
