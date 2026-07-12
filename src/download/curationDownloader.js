@@ -92,7 +92,14 @@ async function downloadCuration({
   fs.writeFileSync(path.join(root, 'public', 'manifest.json'), JSON.stringify({ curationId, title, sketches: manifest }, null, 2));
   const yamlPath = path.join(root, 'public', 'gallery.yaml');
   if (!fs.existsSync(yamlPath)) fs.writeFileSync(yamlPath, galleryYaml(manifest));
-  await scaffoldFn(root, { curationId, curationTitle: title, manifest, quiet: options.quiet, run: options.run });
+  await scaffoldFn(root, {
+    curationId,
+    curationTitle: title,
+    manifest,
+    templateDir: options.templateDir,
+    quiet: options.quiet,
+    run: options.run,
+  });
   return { success: true, outputPath: root, manifest, failedSketches };
 }
 
