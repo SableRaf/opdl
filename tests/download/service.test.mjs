@@ -1,6 +1,10 @@
-import { describe, it, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { DownloadService } from '../../src/download/service.js';
+import { writeTutorial } from '../../src/download/tutorialWriter.js';
 
 describe('DownloadService', () => {
   let service;
@@ -367,6 +371,43 @@ describe('DownloadService', () => {
         assert.equal(result.tutorial, undefined);
         assert.equal(result.available, true);
         assert.equal(result.title, 'T');
+      });
+
+      it('preserves HTTP status in metadata/tutorial.json on client-path 500 (adapter parity)', async () => {
+        // Drive DownloadService -> httpGetViaClient -> client.getTutorialPage,
+        // then serialize via writeTutorial and assert status is preserved.
+        // The client method lets axios throw natively (error.response.status),
+        // so this exercises the extractStatus fallback path.
+        const axiosLikeError = new Error('Request failed with status code 500');
+        axiosLikeError.response = { status: 500, data: { message: 'boom' } };
+
+        mockClient.getSketch = async () => ({
+          visualID: 1, title: 'T', mode: 'p5js', userID: 9, tutorialMode: 1,
+        });
+        mockClient.getUser = async () => ({ fullname: 'U' });
+        mockClient.getSketchCode = async () => [];
+        mockClient.getTutorial = async () => ({
+          visualID: 1, totalPages: 1, tutorialMode: 'normal',
+        });
+        mockClient.getTutorialPage = async () => { throw axiosLikeError; };
+
+        service = new DownloadService(mockClient);
+        const result = await service.getCompleteSketchInfo(1, { quiet: true });
+
+        assert.equal(result.tutorial.failedPages.length, 1);
+        // Raw error still in memory.
+        assert.equal(result.tutorial.failedPages[0].error.response.status, 500);
+
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-svc-'));
+        try {
+          writeTutorial(result.tutorial, tmp, result, { saveMetadata: true, quiet: true });
+          const meta = JSON.parse(fs.readFileSync(path.join(tmp, 'metadata/tutorial.json'), 'utf8'));
+          assert.equal(meta.failedPages.length, 1);
+          assert.equal(meta.failedPages[0].pageNumber, 1);
+          assert.equal(meta.failedPages[0].status, 500);
+        } finally {
+          fs.rmSync(tmp, { recursive: true, force: true });
+        }
       });
     });
   });

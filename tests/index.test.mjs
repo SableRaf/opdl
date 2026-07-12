@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import nock from 'nock';
@@ -567,4 +567,54 @@ describe('opdl (integration)', () => {
     expect(tutorialMeta.tutorialMode).toBe('normal');
     expect(tutorialMeta.failedPages).toEqual([]);
   });
+
+  it('logs tutorial 429 retry warning when verbose: true reaches fetcher', async () => {
+    // Regression: previously opdl() dropped `verbose` when calling fetchSketchInfo,
+    // so this warning never fired on the CLI/programmatic path even on 429s.
+    const sketchId = 2798402;
+
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}`)
+      .reply(200, {
+        visualID: sketchId, title: 'T', mode: 'p5js', userID: 7, tutorialMode: 1,
+      });
+    nock('https://openprocessing.org').get('/api/user/7').reply(200, { fullname: 'A' });
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/code`)
+      .reply(200, [{ title: 'sketch.js', code: '' }]);
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/files?limit=100&offset=0`).reply(200, []);
+    nock('https://openprocessing.org')
+      .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`).reply(200, []);
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}`)
+      .reply(200, { visualID: sketchId, totalPages: 1, tutorialMode: 'normal' });
+    // 429 on first attempt, 200 on retry.
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}/page/1/`)
+      .reply(429, { message: 'Too Many Requests' });
+    nock('https://openprocessing.org')
+      .get(`/api/tutorial/${sketchId}/page/1/`)
+      .reply(200, { markdown: '# ok', codeObjects: [] });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const result = await opdl(sketchId, {
+        outputDir: testDir,
+        downloadAssets: false,
+        downloadThumbnail: false,
+        saveMetadata: false,
+        addSourceComments: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        quiet: false,
+        verbose: true,
+      });
+      expect(result.success).toBe(true);
+      const messages = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(messages).toMatch(/tutorial page 1 hit 429/);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  }, 10000);
 });
