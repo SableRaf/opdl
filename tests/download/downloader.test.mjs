@@ -604,4 +604,91 @@ describe('downloader', () => {
       expect(fs.existsSync(path.join(testDir, 'valid.png'))).toBe(true);
     });
   });
+
+  describe('root-level code-file collisions', () => {
+    it('writes the second colliding part as name_2.js instead of overwriting', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [
+          { title: 'sketch.js', code: 'one' },
+          { title: 'sketch.js', code: 'two' },
+        ],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8')).toBe('one');
+      expect(fs.readFileSync(path.join(testDir, 'sketch_2.js'), 'utf8')).toBe('two');
+    });
+  });
+
+  describe('tutorial bundle wiring', () => {
+    it('produces tutorial/ tree when sketchInfo.tutorial is present', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'main' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+        tutorial: {
+          tutorial: { tutorialMode: 'normal', totalPages: 1, totalPagesRaw: 1 },
+          pages: [{
+            pageNumber: 1,
+            markdown: '# Page',
+            codeObjects: [{ title: 'mySketch.js', code: 'page code' }],
+          }],
+          failedPages: [],
+        },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'tutorial/page_1/README.md'))).toBe(true);
+      expect(fs.readFileSync(path.join(testDir, 'tutorial/page_1/mySketch.js'), 'utf8')).toBe('page code');
+    });
+
+    it('produces no tutorial/ tree when sketchInfo.tutorial is absent', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'main' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'tutorial'))).toBe(false);
+    });
+  });
 });

@@ -112,6 +112,33 @@ class OpenProcessingClient {
   }
 
   /**
+   * Get tutorial index for a sketch.
+   * Omits `validateStatus: () => true` so 4xx/5xx (including 429) throw via
+   * the response interceptor.
+   *
+   * @param {number} id - Sketch (visual) ID
+   * @returns {Promise<any>} Tutorial index payload (incl. totalPages, tutorialMode)
+   */
+  async getTutorial(id) {
+    const response = await this.client.get(`/api/tutorial/${id}`);
+    ensureNotApiError(response.data);
+    return response.data;
+  }
+
+  /**
+   * Get a single tutorial page.
+   *
+   * @param {number} id - Sketch (visual) ID
+   * @param {number} pageNumber - 1-based page index
+   * @returns {Promise<any>} Tutorial page payload (markdown, codeObjects, ...)
+   */
+  async getTutorialPage(id, pageNumber) {
+    const response = await this.client.get(`/api/tutorial/${id}/page/${pageNumber}/`);
+    ensureNotApiError(response.data);
+    return response.data;
+  }
+
+  /**
    * Get sketch files/assets
    * @param {number} id - Sketch ID
    * @param {Object} [options] - List options

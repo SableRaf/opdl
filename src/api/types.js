@@ -23,7 +23,7 @@
  * @property {number} engineID - Processing engine version ID
  * @property {string} engineURL - CDN URL for the selected p5.js/processing.js engine
  * @property {string} fileBase - S3 base URL for sketch assets
- * @property {number} tutorialMode - Tutorial flag (0 = not tutorial, 1 = tutorial)
+ * @property {number|string} tutorialMode - Tutorial flag. /api/sketch returns 0|1; /api/tutorial returns "normal"|"singleCode"
  * @property {number} isTemplate - Template flag (0 = not template, 1 = template)
  * @property {number} hasTimeline - Timeline feature flag (0 = no timeline, 1 = has timeline)
  * @property {number} userID - ID of sketch creator
@@ -171,6 +171,20 @@
  * @property {number} [limit] - Maximum results (1-100, default 20)
  * @property {number} [offset] - Number of results to skip (>=0, default 0)
  * @property {'thisWeek'|'thisMonth'|'thisYear'|'anytime'} [duration] - Time period (default "anytime")
+ */
+
+/**
+ * @typedef {Object} TutorialPage
+ * @property {number} pageNumber - 1-based page index
+ * @property {string} markdown - Page markdown body (empty string if missing)
+ * @property {Array} codeObjects - Per-page code files ({ title, code, ... }); empty in singleCode mode
+ */
+
+/**
+ * @typedef {Object} TutorialBundle
+ * @property {Object} tutorial - Raw /api/tutorial/{id} payload (includes totalPages, tutorialMode)
+ * @property {TutorialPage[]} pages - Successfully fetched pages
+ * @property {Array<{pageNumber: number, error: Error}>} failedPages - Pages that failed all retries
  */
 
 /**

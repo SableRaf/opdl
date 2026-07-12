@@ -34,7 +34,11 @@ const opdl = async (sketchId, options = {}) => {
     return result;
   }
 
-  const sketchInfo = await fetchSketchInfo(sketchId, { quiet: mergedOptions.quiet, token: mergedOptions.token });
+  const sketchInfo = await fetchSketchInfo(sketchId, {
+    quiet: mergedOptions.quiet,
+    verbose: mergedOptions.verbose,
+    token: mergedOptions.token,
+  });
 
   if (!sketchInfo) {
     result.sketchInfo.error = 'Invalid sketch ID';
