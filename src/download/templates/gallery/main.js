@@ -33,8 +33,11 @@ const gridView = document.querySelector("#grid-view");
 const layers = [...document.querySelectorAll(".sketch-layer")];
 const duration = Math.max(0.1, Number(config.slideDuration) || 8) * 1000;
 const transition = Math.max(0, Number(config.transitionTime) || 1.2);
+const randomize = config.randomize !== false;
 let active = 0;
 let current = 0;
+let order = projects.map((_, index) => index);
+let position = 0;
 let timer;
 let progressFrame;
 let idleTimer;
@@ -112,6 +115,33 @@ function whenSketchReady(iframe, engineURL) {
   });
 }
 
+function shuffleOrder(avoidFirst) {
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  if (order.length > 1 && order[0] === avoidFirst) {
+    const swap = 1 + Math.floor(Math.random() * (order.length - 1));
+    [order[0], order[swap]] = [order[swap], order[0]];
+  }
+}
+
+function showNext() {
+  if (!randomize) return show(current + 1);
+  position += 1;
+  if (position >= order.length) {
+    shuffleOrder(current);
+    position = 0;
+  }
+  return show(order[position]);
+}
+
+function showPrevious() {
+  if (!randomize) return show(current - 1);
+  position = (position - 1 + order.length) % order.length;
+  return show(order[position]);
+}
+
 function sketchUrl(project) {
   return `./sketches/${encodeURIComponent(project.dir)}/index.html`;
 }
@@ -142,7 +172,7 @@ function startProgress() {
     const elapsed = now - start;
     if (ring)
       ring.style.setProperty("--progress", Math.min(1, elapsed / duration));
-    if (config.autoplay !== false && elapsed >= duration) show(current + 1);
+    if (config.autoplay !== false && elapsed >= duration) showNext();
     else progressFrame = requestAnimationFrame(tick);
   };
   progressFrame = requestAnimationFrame(tick);
@@ -155,6 +185,12 @@ function openSidebar() {
   document.body.classList.add("sidebar-open");
 }
 function enter(index) {
+  if (randomize) {
+    shuffleOrder();
+    const at = order.indexOf(index);
+    [order[0], order[at]] = [order[at], order[0]];
+    position = 0;
+  }
   gridView.hidden = true;
   view.hidden = false;
   closeSidebar();
@@ -183,8 +219,8 @@ document.querySelector("#back").onclick = leave;
 view.addEventListener("mousemove", revealMenu);
 addEventListener("keydown", (event) => {
   if (view.hidden) return;
-  if (event.key === "ArrowRight") show(current + 1);
-  if (event.key === "ArrowLeft") show(current - 1);
+  if (event.key === "ArrowRight") showNext();
+  if (event.key === "ArrowLeft") showPrevious();
   if (event.key === "Escape") {
     if (document.body.classList.contains("sidebar-open")) closeSidebar();
     else leave();

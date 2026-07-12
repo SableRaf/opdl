@@ -64,6 +64,10 @@ async function handleCurationCommand(args) {
       client,
       options: { ...args.options, token: getToken(args.options.token) },
     });
+    if (result.cancelled) {
+      if (!args.options.quiet) console.log('Curation download cancelled.');
+      return;
+    }
     if (!args.options.quiet && !args.options.run) {
       console.log(`Curation gallery downloaded to: ${result.outputPath}`);
     }
