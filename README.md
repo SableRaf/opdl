@@ -8,7 +8,7 @@ cd curation-gallery
 npm install && npm run dev
 ```
 
-The generated `public/gallery.yaml` controls project order, playback timing, visibility, and optional title or author overrides.
+The generated `public/gallery.yaml` controls global playback settings such as slide and transition timing. The gallery reads its sketch list from `manifest.json` and each sketch's title and author from `metadata/metadata.json`. Add optional `titleOverride` or `authorOverride` properties to a sketch's metadata file to customize its display without maintaining a global project list.
 
 The gallery UI is authored in `src/download/templates/gallery/` as regular `index.html`, `style.css`, and `main.js` files. Programmatic callers can pass `templateDir` to `scaffoldGalleryProject()` or `downloadCuration()` to use their own template directory; `{{CURATION_TITLE}}` is replaced in each template.
 

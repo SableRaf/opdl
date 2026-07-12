@@ -14,11 +14,8 @@ function authorName(sketch) {
   return author?.fullname || author?.userName || author?.username || sketch.userName || '';
 }
 
-function galleryYaml(manifest) {
-  const projects = manifest.map((item) =>
-    `  - id: ${JSON.stringify(item.id)}\n    title: ${JSON.stringify(item.title)}\n    author: ${JSON.stringify(item.author)}\n    # titleOverride: "My Title"\n    # authorOverride: "My Name"`
-  ).join('\n');
-  return `# Playback config\nslideDuration: 8        # seconds each slide is shown\ntransitionTime: 1.2     # seconds used to crossfade\nautoplay: true\n# Which projects to display, in order. Remove a project to hide it.\nprojects:\n${projects}${projects ? '\n' : ''}`;
+function galleryYaml() {
+  return '# Playback config\nslideDuration: 8        # seconds each slide is shown\ntransitionTime: 1.2     # seconds used to crossfade\nautoplay: true\n';
 }
 
 async function downloadCuration({
@@ -91,7 +88,7 @@ async function downloadCuration({
   const title = curation.title || curation.name || `Curation ${curationId}`;
   fs.writeFileSync(path.join(root, 'public', 'manifest.json'), JSON.stringify({ curationId, title, sketches: manifest }, null, 2));
   const yamlPath = path.join(root, 'public', 'gallery.yaml');
-  if (!fs.existsSync(yamlPath)) fs.writeFileSync(yamlPath, galleryYaml(manifest));
+  if (!fs.existsSync(yamlPath)) fs.writeFileSync(yamlPath, galleryYaml());
   await scaffoldFn(root, {
     curationId,
     curationTitle: title,

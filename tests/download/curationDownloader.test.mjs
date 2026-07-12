@@ -18,7 +18,10 @@ describe('downloadCuration', () => {
       expect(opdlFn.mock.calls[0][1].outputDir).toContain(path.join('public', 'sketches', '1_A_quote'));
       expect(result.manifest[0]).toMatchObject({ id: 1, engineURL: 'p5@2.1.0', indexPath: 'public/sketches/1_A_quote/index.html' });
       const yamlPath = path.join(root, 'public', 'gallery.yaml');
-      expect(fs.readFileSync(yamlPath, 'utf8')).toContain('title: "A: \\"quote\\""');
+      const yaml = fs.readFileSync(yamlPath, 'utf8');
+      expect(yaml).toContain('slideDuration: 8');
+      expect(yaml).not.toContain('projects:');
+      expect(yaml).not.toContain('A:');
       fs.writeFileSync(yamlPath, 'custom: true\n');
       await downloadCuration({ curationId: 9, client, opdlFn, scaffoldFn, options: { outputDir: root, limit: 1, quiet: true } });
       expect(fs.readFileSync(yamlPath, 'utf8')).toBe('custom: true\n');

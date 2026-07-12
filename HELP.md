@@ -309,7 +309,7 @@ Work with OpenProcessing curations (collections).
 opdl curation download <curationId> [--max <n>] [--outputDir <path>] [--run]
 ```
 
-Downloads each available sketch for offline use and creates a Vite gallery with grid and slideshow views. Edit `public/gallery.yaml` in the generated folder to reorder or hide sketches, change playback timing, or override displayed titles and authors. `--max` is an alias for `--limit`.
+Downloads each available sketch for offline use and creates a Vite gallery with grid and slideshow views. Edit `public/gallery.yaml` for global playback timing. Titles and authors are read from each sketch's `metadata/metadata.json`, where optional `titleOverride` and `authorOverride` properties may also be added. `--max` is an alias for `--limit`.
 
 #### Display curation information
 

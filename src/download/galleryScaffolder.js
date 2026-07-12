@@ -63,7 +63,7 @@ async function scaffoldGalleryProject(rootDir, options = {}) {
   });
   fs.writeFileSync(
     path.join(rootDir, 'README.md'),
-    `# ${curationTitle}\n\nRun \`npm install && npm run dev\` from this directory. Edit \`public/gallery.yaml\` to reorder or hide projects, change playback timing, or set title/author overrides.\n`,
+    `# ${curationTitle}\n\nRun \`npm install && npm run dev\` from this directory. Edit \`public/gallery.yaml\` to change playback timing. Sketch titles and authors come from each sketch's \`metadata/metadata.json\`; optional \`titleOverride\` and \`authorOverride\` properties can be added there.\n`,
   );
 
   if (!quiet) await installFn(rootDir, quiet);

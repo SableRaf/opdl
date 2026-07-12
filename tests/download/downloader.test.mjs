@@ -256,6 +256,7 @@ describe('downloader', () => {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
       expect(metadata.title).toBe('Test');
       expect(metadata.mode).toBe('p5js');
+      expect(metadata.author).toBe('Author');
     });
 
     it('should download thumbnail when enabled', async () => {

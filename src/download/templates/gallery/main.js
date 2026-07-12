@@ -6,23 +6,25 @@ const [configText, manifestResponse] = await Promise.all([
 ]);
 const config = yaml.load(configText) || {};
 const manifest = await manifestResponse.json();
-const byId = new Map(
-  (manifest.sketches || []).map((sketch) => [String(sketch.id), sketch]),
-);
-const projects = (config.projects || []).flatMap((project) => {
-  const item = byId.get(String(project.id));
-  if (!item) {
-    console.warn("Skipping gallery project missing from manifest:", project.id);
-    return [];
+const projects = await Promise.all((manifest.sketches || []).map(async (item) => {
+  let metadata = {};
+  try {
+    const response = await fetch(`./sketches/${encodeURIComponent(item.dir)}/metadata/metadata.json`);
+    if (response.ok) metadata = await response.json();
+    else console.warn("Could not load sketch metadata:", item.id, response.status);
+  } catch (error) {
+    console.warn("Could not load sketch metadata:", item.id, error);
   }
-  return [
-    {
-      ...item,
-      displayTitle: project.titleOverride ?? item.title,
-      displayAuthor: project.authorOverride ?? item.author,
-    },
-  ];
-});
+  const author = typeof metadata.author === "string"
+    ? metadata.author
+    : metadata.author?.fullname ?? metadata.fullname;
+  return {
+    ...item,
+    metadata,
+    displayTitle: metadata.titleOverride ?? metadata.title ?? item.title,
+    displayAuthor: metadata.authorOverride ?? author ?? item.author,
+  };
+}));
 
 const grid = document.querySelector("#grid");
 const sidebarList = document.querySelector("#sidebar-list");

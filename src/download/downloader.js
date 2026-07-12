@@ -95,7 +95,11 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   if (finalOptions.saveMetadata) {
     const metadataFilePath = path.join(metadataDir, 'metadata.json');
-    fs.writeFileSync(metadataFilePath, JSON.stringify(sketchInfo.metadata || {}, null, 2), 'utf8');
+    const savedMetadata = { ...(sketchInfo.metadata || {}) };
+    // The sketch endpoint does not include the resolved author name. Keep it
+    // with the sketch so offline consumers do not need a second global index.
+    if (!savedMetadata.author && sketchInfo.author) savedMetadata.author = sketchInfo.author;
+    fs.writeFileSync(metadataFilePath, JSON.stringify(savedMetadata, null, 2), 'utf8');
   }
 
   if (finalOptions.downloadThumbnail && sketchInfo.metadata?.visualID) {

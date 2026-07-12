@@ -15,7 +15,10 @@ describe('scaffoldGalleryProject', () => {
       const js = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
       expect(() => execFileSync(process.execPath, ['--check', path.join(root, 'main.js')])).not.toThrow();
       expect(html).toContain('slideshow-view'); expect(html).toContain('sidebar'); expect(html).toContain('slide-pill');
-      expect(js).toContain('metadata/thumbnail.jpg'); expect(js).toContain('whenSketchReady'); expect(js).toContain('setTimeout(finish, 8000)'); expect(js).toContain('Skipping gallery project missing from manifest');
+      expect(js).toContain('/metadata/metadata.json');
+      expect(js).toContain('metadata.titleOverride');
+      expect(js).not.toContain('config.projects');
+      expect(js).toContain('metadata/thumbnail.jpg'); expect(js).toContain('whenSketchReady'); expect(js).toContain('setTimeout(finish, 8000)'); expect(js).toContain('Could not load sketch metadata');
       expect(js).toContain('/p5(?:\\.min)?(?:\\.js)?(?:@|\\/)(\\d+)/i');
       expect(JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).dependencies).toHaveProperty('js-yaml');
     } finally { fs.rmSync(root, { recursive: true, force: true }); }

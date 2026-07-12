@@ -98,14 +98,6 @@ const GALLERY_YAML = `# Playback config (short timings for testing the crossfade
 slideDuration: 4        # seconds each slide is shown
 transitionTime: 1.5     # seconds used to crossfade
 autoplay: true
-# Which projects to display, in order. Remove a project to hide it.
-projects:
-  - id: "demo-a"
-    title: "Demo A — Waves"
-    author: "opdl demo"
-  - id: "demo-b"
-    title: "Demo B — Orbit"
-    author: "opdl demo"
 `;
 
 async function main() {
@@ -121,6 +113,10 @@ async function main() {
     fs.writeFileSync(
       path.join(sketchDir, 'metadata', 'thumbnail.jpg'),
       Buffer.from(sketch.thumbnail, 'base64'),
+    );
+    fs.writeFileSync(
+      path.join(sketchDir, 'metadata', 'metadata.json'),
+      JSON.stringify({ title: sketch.title, author: sketch.author }, null, 2),
     );
   }
 
