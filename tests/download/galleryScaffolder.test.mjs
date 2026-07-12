@@ -1,0 +1,23 @@
+import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
+import { scaffoldGalleryProject } from '../../src/download/galleryScaffolder.js';
+
+describe('scaffoldGalleryProject', () => {
+  it('writes a root-level Vite gallery with resilient slideshow behavior', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-gallery-'));
+    try {
+      await scaffoldGalleryProject(root, { curationId: 5, curationTitle: 'Gallery', quiet: true });
+      for (const file of ['index.html', 'main.js', 'style.css', 'vite.config.js', 'package.json', 'README.md']) expect(fs.existsSync(path.join(root, file))).toBe(true);
+      const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+      const js = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+      expect(() => execFileSync(process.execPath, ['--check', path.join(root, 'main.js')])).not.toThrow();
+      expect(html).toContain('slideshow-view'); expect(html).toContain('sidebar'); expect(html).toContain('slide-pill');
+      expect(js).toContain('metadata/thumbnail.jpg'); expect(js).toContain('whenSketchReady'); expect(js).toContain('setTimeout(finish, 8000)'); expect(js).toContain('Skipping gallery project missing from manifest');
+      expect(js).toContain('/p5(?:\\.min)?(?:\\.js)?(?:@|\\/)(\\d+)/i');
+      expect(JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).dependencies).toHaveProperty('js-yaml');
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+});

@@ -129,6 +129,9 @@ describe('opdl (integration)', () => {
       quiet: true,
     });
 
+    expect(result.sketchInfo.engineURL).toBe('https://cdn.com/p5.js');
+    expect(result.sketchInfo.visualID).toBe(String(sketchId));
+
     expect(result.success).toBe(true);
     expect(result.sketchInfo.title).toBe('Test P5 Sketch');
     expect(result.sketchInfo.author).toBe('Test Author');

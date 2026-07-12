@@ -9,6 +9,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { OpenProcessingClient } from '../src/api/client';
 import { fieldRegistry } from '../src/cli/fieldRegistry';
 
+const liveDescribe = process.env.OPDL_LIVE_TESTS === '1' ? describe : describe.skip;
+
 // Helper to get actual fields from API response
 function getFieldsFromResponse(data) {
   if (Array.isArray(data)) {
@@ -91,7 +93,7 @@ describe('Field Registry Validation', () => {
     client = new OpenProcessingClient(process.env.OP_API_KEY);
   });
 
-  describe('Sketch fields', () => {
+  liveDescribe('Sketch fields', () => {
     it('should match actual API response from /api/sketch/:id', async () => {
       const sketch = await client.getSketch(1142958);
       const actualFields = getFieldsFromResponse(sketch);
@@ -123,7 +125,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('User fields', () => {
+  liveDescribe('User fields', () => {
     it('should match actual API response from /api/user/:id', async () => {
       const user = await client.getUser(1);
       const actualFields = getFieldsFromResponse(user);
@@ -153,7 +155,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('User.sketches fields', () => {
+  liveDescribe('User.sketches fields', () => {
     it('should match actual API response from /api/user/:id/sketches', async () => {
       const sketches = await client.getUserSketches(1, { limit: 1 });
       const actualFields = getFieldsFromResponse(sketches);
@@ -183,7 +185,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('User.followers fields', () => {
+  liveDescribe('User.followers fields', () => {
     it('should match actual API response from /api/user/:id/followers', async () => {
       const followers = await client.getUserFollowers(1, { limit: 1 });
       const actualFields = getFieldsFromResponse(followers);
@@ -213,7 +215,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('User.following fields', () => {
+  liveDescribe('User.following fields', () => {
     it('should match actual API response from /api/user/:id/following', async () => {
       const following = await client.getUserFollowing(1, { limit: 1 });
       const actualFields = getFieldsFromResponse(following);
@@ -243,7 +245,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('Curation fields', () => {
+  liveDescribe('Curation fields', () => {
     it('should match actual API response from /api/curation/:id', async () => {
       const curation = await client.getCuration(25);
       const actualFields = getFieldsFromResponse(curation);
@@ -273,7 +275,7 @@ describe('Field Registry Validation', () => {
     });
   });
 
-  describe('Curation.sketches fields', () => {
+  liveDescribe('Curation.sketches fields', () => {
     let testSketches;
 
     beforeAll(async () => {

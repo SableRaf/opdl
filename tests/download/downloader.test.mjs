@@ -259,7 +259,7 @@ describe('downloader', () => {
     });
 
     it('should download thumbnail when enabled', async () => {
-      nock('https://openprocessing-usercontent.s3.amazonaws.com')
+      nock('https://kyoko.openprocessing.org')
         .get('/thumbnails/visualThumbnail999@2x.jpg')
         .reply(200, Buffer.from('fake-thumbnail'));
 

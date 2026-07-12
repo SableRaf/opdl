@@ -24,6 +24,8 @@ const opdl = async (sketchId, options = {}) => {
       title: '',
       author: '',
       mode: '',
+      engineURL: '',
+      visualID: '',
       isFork: false,
       error: '',
     },
@@ -48,6 +50,8 @@ const opdl = async (sketchId, options = {}) => {
   result.sketchInfo.title = sketchInfo.title || sketchInfo.metadata?.title || '';
   result.sketchInfo.author = sketchInfo.author || '';
   result.sketchInfo.mode = sketchInfo.mode || sketchInfo.metadata?.mode || '';
+  result.sketchInfo.engineURL = sketchInfo.engineURL || sketchInfo.metadata?.engineURL || '';
+  result.sketchInfo.visualID = sketchInfo.visualID || sketchInfo.metadata?.visualID || String(sketchId);
   result.sketchInfo.isFork = sketchInfo.isFork;
   if (sketchInfo.error) {
     result.sketchInfo.error = sketchInfo.error;

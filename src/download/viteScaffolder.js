@@ -32,8 +32,7 @@ async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
 
   // Check Node version - Vite 6 requires Node 20+
   const nodeVersion = process.version;
-  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0], 10);
-  if (majorVersion < 20) {
+  if (!supportsVite(nodeVersion)) {
     if (!quiet) {
       console.warn(`opdl: Vite 6 requires Node.js 20 or higher. Current version: ${nodeVersion}`);
       console.warn('opdl: Skipping Vite setup. Please upgrade Node.js to use --vite flag.');
@@ -185,6 +184,10 @@ async function scaffoldViteProject(outputDir, sketchInfo, options = {}) {
     }
     throw error;
   }
+}
+
+function supportsVite(nodeVersion = process.version) {
+  return parseInt(nodeVersion.slice(1).split('.')[0], 10) >= 20;
 }
 
 /**
@@ -365,4 +368,4 @@ function runNpmInstall(outputDir, quiet) {
   });
 }
 
-module.exports = { scaffoldViteProject };
+module.exports = { scaffoldViteProject, runNpmInstall, createViteConfig, supportsVite };

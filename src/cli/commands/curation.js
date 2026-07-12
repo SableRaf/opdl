@@ -3,6 +3,7 @@ const { selectFields } = require('../fieldSelector');
 const { formatObject, formatArray } = require('../formatters');
 const { validateId } = require('../../api/validator');
 const { getToken } = require('../../config');
+const { downloadCuration } = require('../../download/curationDownloader');
 
 /**
  * Handle curation-related commands
@@ -56,6 +57,15 @@ async function handleCurationCommand(args) {
 
     if (!args.options.quiet) {
       console.log(formatArray(output, { json: args.options.json }));
+    }
+  } else if (args.subcommand === 'download') {
+    const result = await downloadCuration({
+      curationId,
+      client,
+      options: { ...args.options, token: getToken(args.options.token) },
+    });
+    if (!args.options.quiet && !args.options.run) {
+      console.log(`Curation gallery downloaded to: ${result.outputPath}`);
     }
   } else {
     throw new Error(`Unknown curation subcommand: ${args.subcommand}`);
