@@ -1,17 +1,5 @@
 # opdl
 
-Download a whole curation as an offline, browsable Vite gallery:
-
-```bash
-opdl curation download 12 --max 10 --outputDir ./curation-gallery
-cd curation-gallery
-npm install && npm run dev
-```
-
-The generated `public/gallery.yaml` controls global playback settings such as slide and transition timing. The gallery reads its sketch list from `manifest.json` and each sketch's title and author from `metadata/metadata.json`. Add optional `titleOverride` or `authorOverride` properties to a sketch's metadata file to customize its display without maintaining a global project list.
-
-The gallery UI is authored in `src/download/templates/gallery/` as regular `index.html`, `style.css`, and `main.js` files. Programmatic callers can pass `templateDir` to `scaffoldGalleryProject()` or `downloadCuration()` to use their own template directory; `{{CURATION_TITLE}}` is replaced in each template.
-
 With `opdl`, you can take an OpenProcessing sketch, download it by ID, and get a ready-to-run local version that includes all files, assets, and credits. This is ideal for offline access, archiving, or using OpenProcessing sketches as a starting point for your own projects.
 
 This also serves as a command-line client for the OpenProcessing API, so you can do much more than just download sketches. See the [documentation](HELP.md) for a full list of features.

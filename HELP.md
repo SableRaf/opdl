@@ -305,13 +305,24 @@ Work with OpenProcessing curations (collections).
 
 #### Download a curation gallery
 
+Download a whole curation as an offline, browsable Vite gallery:
+
 ```bash
 opdl curation download <curationId> [--max <n>] [--outputDir <path>] [--run] [--overwrite | --skipExisting]
+```
+For example, download the first 10 sketches of curation ID `72108` to a folder named `curation-gallery`:
+
+```bash
+opdl curation download 72108 --max 10 --outputDir ./curation-gallery
+cd curation-gallery
+npm install && npm run dev
 ```
 
 Downloads each available sketch for offline use and creates a Vite gallery with grid and slideshow views. Edit `public/gallery.yaml` for global playback timing. Titles and authors are read from each sketch's `metadata/metadata.json`, where optional `titleOverride` and `authorOverride` properties may also be added. `--max` is an alias for `--limit`.
 
 If a sketch folder already exists, opdl asks whether to skip it (the default), overwrite it, apply either choice to all remaining existing sketches, or cancel the download. Skipped sketches keep their local files (including any metadata overrides) and stay in the gallery. Use `--overwrite` or `--skipExisting` to set the policy up front without prompting; non-interactive sessions (piped output, CI, or `--quiet`) skip existing sketches by default.
+
+The gallery UI is defined by regular `index.html`, `style.css`, and `main.js` files in `src/download/templates/gallery/`.
 
 #### Display curation information
 
