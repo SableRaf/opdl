@@ -168,8 +168,13 @@ function parseOptions(args) {
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
     else if (arg === '--vite') options.vite = true;
     else if (arg === '--run') options.run = true;
-    else if (arg === '--overwrite') options.overwrite = true;
-    else if (arg === '--skipExisting') options.skipExisting = true;
+    else if (arg === '--overwrite') {
+      options.overwrite = true;
+      options.skipExisting = false;
+    } else if (arg === '--skipExisting') {
+      options.skipExisting = true;
+      options.overwrite = false;
+    }
     else if (arg === '--verbose') options.verbose = true;
     // Value flags with = syntax
     else if (arg.startsWith('--token=')) {
