@@ -130,9 +130,41 @@ body {
 
 #slide-pill.expanded #sidebar-list {
     display: grid;
-    overflow: auto;
+    overflow-y: auto;
+    min-height: 0;
+    align-content: start;
+    /* Square rows: fix each row's height to the column width so cards can't
+       overflow their track and overlap the row below (which happened when rows
+       were auto-sized from the card's aspect-ratio). Panel content width is the
+       expanded pill width minus its 1rem side padding; each of the two equal
+       columns is (that - 1rem gap) / 2. */
+    grid-auto-rows: calc((min(380px, 100vw - 2rem) - 2rem - 1rem) / 2);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+/* The grid track is a fixed square; let the card fill it instead of using its
+   own aspect-ratio (which the grid was collapsing, causing the overlap). */
+#slide-pill.expanded .card {
+    aspect-ratio: auto;
+    height: 100%;
     min-height: 0;
 }
+
+/* Transparent scrollbar track (WebKit/Blink). */
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 999px;
+}
+
 
 .pill-text {
     display: flex;

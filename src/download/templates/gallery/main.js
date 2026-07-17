@@ -1,5 +1,11 @@
 import yaml from "js-yaml";
 
+// Author strings arrive as "Full Name <username>"; drop the <username> suffix.
+function stripHandle(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/\s*<[^>]*>\s*$/, "").trim() || value;
+}
+
 const [configText, manifestResponse] = await Promise.all([
   fetch("./gallery.yaml").then((response) => response.text()),
   fetch("./manifest.json"),
@@ -18,11 +24,13 @@ const projects = await Promise.all((manifest.sketches || []).map(async (item) =>
   const author = typeof metadata.author === "string"
     ? metadata.author
     : metadata.author?.fullname ?? metadata.fullname;
+  // The API author field is "Full Name <username>"; show just the name.
+  const authorName = stripHandle(author ?? item.author);
   return {
     ...item,
     metadata,
     displayTitle: metadata.titleOverride ?? metadata.title ?? item.title,
-    displayAuthor: metadata.authorOverride ?? author ?? item.author,
+    displayAuthor: metadata.authorOverride ?? authorName,
   };
 }));
 
