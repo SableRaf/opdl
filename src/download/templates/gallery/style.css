@@ -292,7 +292,7 @@ a.pill-author:focus-visible {
     height: 28px;
     flex: 0 0 auto;
     border-radius: 50%;
-    background: conic-gradient(#1a1a1a calc(var(--progress) * 1turn), rgba(0, 0, 0, 0.15) 0);
+    background: conic-gradient(#626262 calc(var(--progress) * 1turn), rgba(0, 0, 0, 0.15) 0);
 }
 
 .play-toggle {
