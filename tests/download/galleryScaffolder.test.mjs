@@ -31,6 +31,7 @@ describe('scaffoldGalleryProject', () => {
       fs.writeFileSync(path.join(templates, 'index.html'), '<title>{{CURATION_TITLE}}</title>');
       fs.writeFileSync(path.join(templates, 'style.css'), 'body { color: hotpink; }\n');
       fs.writeFileSync(path.join(templates, 'main.js'), 'console.log("authored template");\n');
+      fs.writeFileSync(path.join(templates, 'README.md'), '# {{CURATION_TITLE_RAW}}\n');
 
       await scaffoldGalleryProject(root, {
         curationId: 5,
@@ -42,6 +43,7 @@ describe('scaffoldGalleryProject', () => {
       expect(fs.readFileSync(path.join(root, 'index.html'), 'utf8')).toBe('<title>A &lt;Gallery&gt;</title>');
       expect(fs.readFileSync(path.join(root, 'style.css'), 'utf8')).toBe('body { color: hotpink; }\n');
       expect(fs.readFileSync(path.join(root, 'main.js'), 'utf8')).toBe('console.log("authored template");\n');
+      expect(fs.readFileSync(path.join(root, 'README.md'), 'utf8')).toBe('# A <Gallery>\n');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
       fs.rmSync(templates, { recursive: true, force: true });

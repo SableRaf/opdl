@@ -31,9 +31,28 @@ const sidebarList = document.querySelector("#sidebar-list");
 const view = document.querySelector("#slideshow-view");
 const gridView = document.querySelector("#grid-view");
 const layers = [...document.querySelectorAll(".sketch-layer")];
-const duration = Math.max(0.1, Number(config.slideDuration) || 8) * 1000;
+
+// URL query parameters override gallery.yaml, e.g. ?duration=30&shuffle=true&autoplay=false
+const params = new URLSearchParams(location.search);
+function numberParam(name, fallback) {
+  if (!params.has(name)) return fallback;
+  const value = Number(params.get(name));
+  return Number.isFinite(value) ? value : fallback;
+}
+function boolParam(name, fallback) {
+  if (!params.has(name)) return fallback;
+  const value = params.get(name).trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(value)) return true;
+  if (["false", "0", "no", "off"].includes(value)) return false;
+  return fallback;
+}
+
+const duration =
+  Math.max(0.1, numberParam("duration", Number(config.slideDuration) || 8)) *
+  1000;
 const transition = Math.max(0, Number(config.transitionTime) || 1.2);
-const randomize = config.randomize !== false;
+const randomize = boolParam("shuffle", config.randomize !== false);
+const autoplay = boolParam("autoplay", config.autoplay !== false);
 let active = 0;
 let current = 0;
 let order = projects.map((_, index) => index);
@@ -172,7 +191,7 @@ function startProgress() {
     const elapsed = now - start;
     if (ring)
       ring.style.setProperty("--progress", Math.min(1, elapsed / duration));
-    if (config.autoplay !== false && elapsed >= duration) showNext();
+    if (autoplay && elapsed >= duration) showNext();
     else progressFrame = requestAnimationFrame(tick);
   };
   progressFrame = requestAnimationFrame(tick);

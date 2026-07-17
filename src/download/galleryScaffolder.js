@@ -4,7 +4,7 @@ const { runNpmInstall, createViteConfig, supportsVite } = require('./viteScaffol
 const { runDevServer } = require('./serverRunner');
 
 const DEFAULT_TEMPLATE_DIR = path.join(__dirname, 'templates', 'gallery');
-const TEMPLATE_FILES = ['index.html', 'main.js', 'style.css'];
+const TEMPLATE_FILES = ['index.html', 'main.js', 'style.css', 'README.md'];
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -60,11 +60,8 @@ async function scaffoldGalleryProject(rootDir, options = {}) {
   createViteConfig(rootDir);
   writeGalleryTemplates(rootDir, path.resolve(templateDir), {
     CURATION_TITLE: escapeHtml(curationTitle),
+    CURATION_TITLE_RAW: curationTitle,
   });
-  fs.writeFileSync(
-    path.join(rootDir, 'README.md'),
-    `# ${curationTitle}\n\nRun \`npm install && npm run dev\` from this directory. Edit \`public/gallery.yaml\` to change playback timing and order (set \`randomize: false\` for curation order). Sketch titles and authors come from each sketch's \`metadata/metadata.json\`; optional \`titleOverride\` and \`authorOverride\` properties can be added there.\n`,
-  );
 
   if (!quiet) await installFn(rootDir, quiet);
   if (run) await runDevServerFn(rootDir, { vite: true, quiet });
