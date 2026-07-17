@@ -27,9 +27,9 @@ const BATCH_CONFLICT_CHOICES = [
  * Writing it blindly clobbers the code object; skipping it silently hides the
  * conflict. So we surface it and let the user decide.
  *
- * Non-interactive sessions (no TTY, or --quiet — which is how curation batch
- * downloads always run) default to 'keep-both': nothing is lost and the
- * code object keeps its canonical name.
+ * Non-interactive sessions (no TTY) default to 'keep-both': nothing is lost and
+ * the code object keeps its canonical name. When `--quiet` is set, prompting is
+ * suppressed (unattended runs) and the same safe default is used.
  *
  * @param {Object} params
  * @param {string} params.filename - The colliding filename (e.g. 'index.html')
