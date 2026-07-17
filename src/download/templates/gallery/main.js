@@ -321,6 +321,14 @@ if (!boolParam("overlay", true)) slidePill.style.display = "none";
 // the animating sketch behind the pill inconsistently, causing random flicker.
 if (!boolParam("blur", true)) slidePill.classList.add("no-blur");
 
+// ?backgroundColor=ffffffb3 overrides the pill's background color. The value is
+// a bare hex color (3/4/6/8 digits, no leading #); the inline style wins over
+// both the default and no-blur rules.
+const backgroundColor = params.get("backgroundColor");
+if (backgroundColor && /^([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(backgroundColor)) {
+  slidePill.style.background = `#${backgroundColor}`;
+}
+
 function syncSidebarToggle() {
   const open = slidePill.classList.contains("expanded");
   const pillMenu = document.querySelector(".pill-menu");
