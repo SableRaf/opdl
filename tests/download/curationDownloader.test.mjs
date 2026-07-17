@@ -95,6 +95,55 @@ describe('downloadCuration', () => {
     }
   });
 
+  it('prompts once for a filename collision and applies the -all policy to the rest', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      // Simulate downloadSketch detecting an index.html collision on every
+      // sketch: it consults the injected handler and records what it resolved to.
+      const resolved = [];
+      const opdlFn = vi.fn(async (id, opts) => {
+        const action = await opts.onFilenameConflict({ filename: 'index.html' });
+        resolved.push(action);
+        return { success: true, sketchInfo: { visualID: id, title: `S${id}` } };
+      });
+      const onFilenameConflict = vi.fn().mockResolvedValue('keep-both-all');
+
+      const result = await downloadCuration({
+        curationId: 9,
+        client: conflictClient([{ visualID: 1, title: 'A' }, { visualID: 2, title: 'B' }, { visualID: 3, title: 'C' }]),
+        opdlFn, scaffoldFn: vi.fn(), onFilenameConflict,
+        options: { outputDir: root, quiet: true },
+      });
+
+      // Asked once; the -all suffix is stripped so downloadSketch sees a base action.
+      expect(onFilenameConflict).toHaveBeenCalledTimes(1);
+      expect(onFilenameConflict.mock.calls[0][0]).toMatchObject({ filename: 'index.html', batch: true, quiet: true });
+      expect(resolved).toEqual(['keep-both', 'keep-both', 'keep-both']);
+      expect(result.manifest).toHaveLength(3);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('re-prompts each time when the filename choice is not an -all variant', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      const opdlFn = vi.fn(async (id, opts) => {
+        await opts.onFilenameConflict({ filename: 'index.html' });
+        return { success: true, sketchInfo: { visualID: id, title: `S${id}` } };
+      });
+      const onFilenameConflict = vi.fn().mockResolvedValue('skip-upload');
+
+      await downloadCuration({
+        curationId: 9,
+        client: conflictClient([{ visualID: 1, title: 'A' }, { visualID: 2, title: 'B' }]),
+        opdlFn, scaffoldFn: vi.fn(), onFilenameConflict,
+        options: { outputDir: root, quiet: true },
+      });
+
+      // No policy locked in, so each colliding sketch prompts again.
+      expect(onFilenameConflict).toHaveBeenCalledTimes(2);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
   it('cancel stops the download without scaffolding or writing the manifest', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
     try {

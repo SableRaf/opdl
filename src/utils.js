@@ -109,10 +109,33 @@ const resolveAssetUrl = (assetBaseUrl, filename) => {
   return '';
 };
 
+/**
+ * Return a filename not already present in `usedNames`, appending _2, _3, …
+ * before the extension until it is unique. Does not mutate `usedNames`.
+ * @param {string} filename - Desired filename (may already be taken)
+ * @param {Set<string>} usedNames - Names already claimed in the target directory
+ * @returns {string} A filename absent from usedNames
+ */
+const dedupeFilename = (filename, usedNames) => {
+  if (!usedNames.has(filename)) {
+    return filename;
+  }
+  const ext = path.extname(filename);
+  const base = filename.slice(0, filename.length - ext.length);
+  let suffix = 2;
+  let candidate = `${base}_${suffix}${ext}`;
+  while (usedNames.has(candidate)) {
+    suffix += 1;
+    candidate = `${base}_${suffix}${ext}`;
+  }
+  return candidate;
+};
+
 module.exports = {
   ensureDirectoryExists,
   sanitizeFilename,
   buildAssetRenameMap,
   rewriteAssetReferences,
   resolveAssetUrl,
+  dedupeFilename,
 };

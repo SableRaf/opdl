@@ -7,12 +7,14 @@ const {
   sanitizeFilename,
   buildAssetRenameMap,
   resolveAssetUrl,
+  dedupeFilename,
 } = require('../utils');
 const { generateIndexHtml } = require('./htmlGenerator');
 const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
 const { writeCodeFile } = require('./codeFileWriter');
 const { writeTutorial } = require('./tutorialWriter');
+const { promptFilenameConflictAction } = require('./filenameConflictPrompt');
 
 const META_DIR = 'metadata';
 const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
@@ -26,6 +28,7 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   ensureDirectoryExists(outputDir);
   const shouldAddSourceComments = finalOptions.addSourceComments;
+  const onFilenameConflict = finalOptions.onFilenameConflict || promptFilenameConflictAction;
 
   const savedCodeFiles = [];
   const sanitizedCodeParts = [];
@@ -70,6 +73,28 @@ const downloadSketch = async (sketchInfo, options = {}) => {
           continue;
         }
 
+        let assetFileName = sanitizeFilename(filename) || path.basename(filename);
+        // A sketch's uploaded files can collide with an authoritative code
+        // object of the same name — e.g. a stale index.html left over from an
+        // older version that points at files no longer present. Writing it
+        // blindly clobbers the code object (causing 404s at runtime), so we
+        // surface the conflict and let the user decide.
+        if (rootUsedNames.has(assetFileName)) {
+          const action = await onFilenameConflict({
+            filename: assetFileName,
+            quiet: finalOptions.quiet,
+          });
+          if (action === 'skip-upload') {
+            continue;
+          }
+          if (action === 'keep-both') {
+            // Code object keeps its canonical name; rename the uploaded file.
+            assetFileName = dedupeFilename(assetFileName, rootUsedNames);
+          }
+          // 'overwrite-code' falls through and reuses the canonical name.
+        }
+        rootUsedNames.add(assetFileName);
+
         const assetUrl = resolveAssetUrl(assetBaseUrl, filename);
         if (!assetUrl) {
           if (!finalOptions.quiet) {
@@ -83,7 +108,6 @@ const downloadSketch = async (sketchInfo, options = {}) => {
             console.log(`opdl: downloading asset ${filename} from ${assetUrl}`);
           }
           const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-          const assetFileName = sanitizeFilename(filename) || path.basename(filename);
           const assetFilePath = path.join(outputDir, assetFileName);
           fs.writeFileSync(assetFilePath, response.data);
         } catch (error) {
