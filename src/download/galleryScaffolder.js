@@ -63,7 +63,7 @@ async function scaffoldGalleryProject(rootDir, options = {}) {
     CURATION_TITLE_RAW: curationTitle,
   });
 
-  if (!quiet) await installFn(rootDir, quiet);
+  if (!quiet || run) await installFn(rootDir, quiet);
   if (run) await runDevServerFn(rootDir, { vite: true, quiet });
 }
 
