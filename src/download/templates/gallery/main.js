@@ -405,4 +405,18 @@ addEventListener("keydown", (event) => {
   }
 });
 
-if (projects.length) enter(order[0]);
+// Pick the starting sketch: an explicit ?sketch=<visualID> wins; otherwise, when
+// shuffling, start from a random sketch; otherwise start from the first.
+function startIndex() {
+  const wanted = params.get("sketch");
+  if (wanted != null) {
+    const found = projects.findIndex(
+      (project) => String(project.metadata?.visualID ?? project.id) === wanted,
+    );
+    if (found !== -1) return found;
+  }
+  if (randomize) return Math.floor(Math.random() * projects.length);
+  return 0;
+}
+
+if (projects.length) enter(startIndex());
