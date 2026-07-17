@@ -376,6 +376,10 @@ addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") showNext();
   if (event.key === "ArrowLeft") showPrevious();
   if (event.key === "Escape") closeSidebar();
+  if (event.key === " ") {
+    event.preventDefault(); // Stop the page from scrolling on spacebar.
+    togglePlay();
+  }
 });
 
 if (projects.length) enter(order[0]);
