@@ -13,3 +13,4 @@ thumbs.db
 *.iml
 out/
 build/
+test-curation-gallery/

@@ -66,6 +66,8 @@ let position = 0;
 let timer;
 let progressFrame;
 let idleTimer;
+let blankTimer;
+let showToken = 0;
 let playing = autoplay;
 let elapsed = 0;
 let lastTick = 0;
@@ -216,14 +218,21 @@ function sketchUrl(project) {
 async function show(index, immediate = false) {
   if (!projects.length) return;
   clearTimeout(timer);
+  clearTimeout(blankTimer);
   cancelAnimationFrame(progressFrame);
   elapsed = 0;
+  // Each show() claims a token; a slower load that is superseded by a newer
+  // show() (e.g. rapid arrow-key navigation) bails out instead of stomping the
+  // active layer once its whenSketchReady() finally resolves.
+  const token = ++showToken;
+  const previous = active;
   current = (index + projects.length) % projects.length;
   const project = projects[current];
   const next = immediate ? active : 1 - active;
   const frame = layers[next];
   frame.src = sketchUrl(project);
   await whenSketchReady(frame, project.engineURL);
+  if (token !== showToken) return;
   document.querySelector("#pill-header").innerHTML = pillMarkup(project, {
     progress: true,
     links: true,
@@ -236,12 +245,23 @@ async function show(index, immediate = false) {
   syncPlayToggle();
   syncSidebarToggle();
   frame.style.transitionDuration = `${transition}s`;
-  layers[active].style.transitionDuration = `${transition}s`;
+  layers[previous].style.transitionDuration = `${transition}s`;
   frame.classList.add("active");
-  if (next !== active) layers[active].classList.remove("active");
+  if (next !== previous) layers[previous].classList.remove("active");
   active = next;
   highlightCurrentCard();
   startProgress();
+  // Once the crossfade finishes, unload the outgoing sketch. Otherwise the
+  // previous sketch keeps running its draw loop and holding a full-viewport
+  // WebGL context at opacity 0 — two live WebGL contexts at devicePixelRatio is
+  // enough to exhaust VRAM and crash the shared GPU process (taking every
+  // Chromium/Electron app down with it). Token-guarded so rapid navigation
+  // can't blank the wrong layer.
+  if (next !== previous) {
+    blankTimer = setTimeout(() => {
+      if (token === showToken) layers[previous].src = "about:blank";
+    }, transition * 1000 + 100);
+  }
 }
 
 function syncPlayToggle() {
@@ -314,6 +334,28 @@ function revealMenu() {
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => view.classList.remove("controls-visible"), 1600);
 }
+
+// While the tab is hidden, tear the sketches down entirely: a backgrounded tab
+// still holds every sketch's WebGL context and GPU memory, and switching away
+// from a running slideshow of full-viewport shader sketches was enough to
+// exhaust VRAM and reset the GPU (crashing all Chromium/Electron apps). Blanking
+// both iframes releases the contexts and stops the draw loops; we reload the
+// current slide fresh on return, which also avoids the stale-timer jump that a
+// paused-then-resumed requestAnimationFrame would otherwise cause.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    showToken += 1; // invalidate any in-flight show()
+    clearTimeout(timer);
+    clearTimeout(blankTimer);
+    cancelAnimationFrame(progressFrame);
+    layers.forEach((layer) => {
+      layer.classList.remove("active");
+      layer.src = "about:blank";
+    });
+  } else if (projects.length) {
+    show(current, true);
+  }
+});
 
 document.querySelector("#scrim").onclick = closeSidebar;
 addEventListener("mousemove", revealMenu);
