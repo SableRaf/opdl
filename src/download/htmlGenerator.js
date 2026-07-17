@@ -7,6 +7,20 @@ const DEFAULT_STYLESHEET = `body {
 }
 `;
 
+// In p5.js mode, center the canvas in the viewport and use a neutral grey
+// backdrop so the sketch reads clearly against the page (matching how sketches
+// are framed on OpenProcessing).
+const P5_STYLESHEET = `body {
+  padding: 0;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #808080;
+}
+`;
+
 const generateIndexHtml = (metadata, codeParts, outputDir) => {
   const parts = codeParts || [];
   const hasExistingHtml = parts.some((part) => part.title === 'index.html');
@@ -79,8 +93,9 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
 
   if (!hasExistingCss) {
     const stylesheetPath = path.join(outputDir, 'style.css');
-    fs.writeFileSync(stylesheetPath, DEFAULT_STYLESHEET, 'utf8');
+    const stylesheet = metadata.mode === 'p5js' ? P5_STYLESHEET : DEFAULT_STYLESHEET;
+    fs.writeFileSync(stylesheetPath, stylesheet, 'utf8');
   }
 };
 
-module.exports = { generateIndexHtml, DEFAULT_STYLESHEET };
+module.exports = { generateIndexHtml, DEFAULT_STYLESHEET, P5_STYLESHEET };
