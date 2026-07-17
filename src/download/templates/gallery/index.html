@@ -7,23 +7,15 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
-    <main id="grid-view">
-      <header><h1>{{CURATION_TITLE}}</h1></header>
-      <div id="grid" class="card-list"></div>
-    </main>
-
-    <section id="slideshow-view" hidden>
+    <section id="slideshow-view">
       <div id="layers">
         <iframe class="sketch-layer active" scrolling="no"></iframe>
         <iframe class="sketch-layer" scrolling="no"></iframe>
       </div>
-      <button id="menu" aria-label="Open projects">☰</button>
-      <button id="back" aria-label="Back to gallery">← Grid</button>
-      <div id="slide-pill" class="pill"></div>
-      <aside id="sidebar">
-        <button id="close" aria-label="Close projects">×</button>
+      <div id="slide-pill" class="pill">
+        <div id="pill-header"></div>
         <div id="sidebar-list" class="card-list"></div>
-      </aside>
+      </div>
       <div id="scrim"></div>
     </section>
 

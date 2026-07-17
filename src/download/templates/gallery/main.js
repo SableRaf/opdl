@@ -26,10 +26,8 @@ const projects = await Promise.all((manifest.sketches || []).map(async (item) =>
   };
 }));
 
-const grid = document.querySelector("#grid");
 const sidebarList = document.querySelector("#sidebar-list");
 const view = document.querySelector("#slideshow-view");
-const gridView = document.querySelector("#grid-view");
 const layers = [...document.querySelectorAll(".sketch-layer")];
 
 // URL query parameters override gallery.yaml, e.g. ?duration=30&shuffle=true&autoplay=false
@@ -74,11 +72,43 @@ function escapeText(value) {
   return node.innerHTML;
 }
 
-function pillMarkup(project, progress = false) {
+function escapeAttr(value) {
+  return escapeText(value).replace(/"/g, "&quot;");
+}
+
+function sketchPageUrl(project) {
+  const username = project.metadata?.username;
+  const visualID = project.metadata?.visualID;
+  if (!username || !visualID) return null;
+  return `https://openprocessing.org/@${encodeURIComponent(username)}/${encodeURIComponent(visualID)}`;
+}
+
+function authorPageUrl(project) {
+  const username = project.metadata?.username;
+  if (!username) return null;
+  return `https://openprocessing.org/@${encodeURIComponent(username)}`;
+}
+
+// `links` renders the title/author as anchors to OpenProcessing (used on the
+// live slide pill). Cards keep plain text so the whole card stays clickable.
+function pillMarkup(project, { progress = false, links = false, menu = false } = {}) {
+  const menuButton = menu
+    ? '<button type="button" class="pill-menu" aria-label="Show projects" aria-expanded="false"></button>'
+    : "";
   const indicator = progress
     ? '<span class="progress" style="--progress:0"><button type="button" class="play-toggle" aria-label="Play"></button></span>'
     : "";
-  return `<span><strong>${escapeText(project.displayTitle)}</strong><small>${escapeText(project.displayAuthor)}</small></span>${indicator}`;
+  const title = escapeText(project.displayTitle);
+  const author = escapeText(project.displayAuthor);
+  const sketchUrl = links ? sketchPageUrl(project) : null;
+  const authorUrl = links ? authorPageUrl(project) : null;
+  const titleHtml = sketchUrl
+    ? `<a class="pill-title" href="${escapeAttr(sketchUrl)}" target="_blank" rel="noopener">${title}</a>`
+    : `<strong class="pill-title">${title}</strong>`;
+  const authorHtml = authorUrl
+    ? `<a class="pill-author" href="${escapeAttr(authorUrl)}" target="_blank" rel="noopener">${author}</a>`
+    : `<span class="pill-author">${author}</span>`;
+  return `${menuButton}<span class="pill-text">${titleHtml}<small class="pill-by">by ${authorHtml}</small></span>${indicator}`;
 }
 
 function card(project, index) {
@@ -93,10 +123,17 @@ function card(project, index) {
   return button;
 }
 
-projects.forEach((project, index) => {
-  grid.append(card(project, index));
-  sidebarList.append(card(project, index));
+const cards = projects.map((project, index) => {
+  const element = card(project, index);
+  sidebarList.append(element);
+  return element;
 });
+
+function highlightCurrentCard() {
+  cards.forEach((element, index) => {
+    element.classList.toggle("is-current", index === current);
+  });
+}
 
 function isP5V2(url = "") {
   const match = String(url).match(/p5(?:\.min)?(?:\.js)?(?:@|\/)(\d+)/i);
@@ -179,15 +216,23 @@ async function show(index, immediate = false) {
   const frame = layers[next];
   frame.src = sketchUrl(project);
   await whenSketchReady(frame, project.engineURL);
-  document.querySelector("#slide-pill").innerHTML = pillMarkup(project, true);
+  document.querySelector("#pill-header").innerHTML = pillMarkup(project, {
+    progress: true,
+    links: true,
+    menu: true,
+  });
   const toggle = document.querySelector(".play-toggle");
   if (toggle) toggle.onclick = togglePlay;
+  const pillMenu = document.querySelector(".pill-menu");
+  if (pillMenu) pillMenu.onclick = toggleSidebar;
   syncPlayToggle();
+  syncSidebarToggle();
   frame.style.transitionDuration = `${transition}s`;
   layers[active].style.transitionDuration = `${transition}s`;
   frame.classList.add("active");
   if (next !== active) layers[active].classList.remove("active");
   active = next;
+  highlightCurrentCard();
   startProgress();
 }
 
@@ -221,11 +266,29 @@ function startProgress() {
   progressFrame = requestAnimationFrame(tick);
 }
 
+const slidePill = document.querySelector("#slide-pill");
+
+function syncSidebarToggle() {
+  const open = slidePill.classList.contains("expanded");
+  const pillMenu = document.querySelector(".pill-menu");
+  if (pillMenu) {
+    pillMenu.setAttribute("aria-expanded", String(open));
+    pillMenu.setAttribute("aria-label", open ? "Hide projects" : "Show projects");
+  }
+}
 function closeSidebar() {
+  slidePill.classList.remove("expanded");
   document.body.classList.remove("sidebar-open");
+  syncSidebarToggle();
 }
 function openSidebar() {
+  slidePill.classList.add("expanded");
   document.body.classList.add("sidebar-open");
+  syncSidebarToggle();
+}
+function toggleSidebar() {
+  if (slidePill.classList.contains("expanded")) closeSidebar();
+  else openSidebar();
 }
 function enter(index) {
   if (randomize) {
@@ -234,20 +297,9 @@ function enter(index) {
     [order[0], order[at]] = [order[at], order[0]];
     position = 0;
   }
-  gridView.hidden = true;
-  view.hidden = false;
   closeSidebar();
   show(index, true);
   revealMenu();
-}
-function leave() {
-  clearTimeout(timer);
-  cancelAnimationFrame(progressFrame);
-  view.hidden = true;
-  gridView.hidden = false;
-  layers.forEach((frame) => {
-    frame.src = "about:blank";
-  });
 }
 function revealMenu() {
   view.classList.add("controls-visible");
@@ -255,20 +307,12 @@ function revealMenu() {
   idleTimer = setTimeout(() => view.classList.remove("controls-visible"), 1600);
 }
 
-document.querySelector("#menu").onclick = openSidebar;
-document.querySelector("#close").onclick = closeSidebar;
 document.querySelector("#scrim").onclick = closeSidebar;
-document.querySelector("#back").onclick = leave;
-view.addEventListener("mousemove", revealMenu);
+addEventListener("mousemove", revealMenu);
 addEventListener("keydown", (event) => {
-  if (view.hidden) return;
   if (event.key === "ArrowRight") showNext();
   if (event.key === "ArrowLeft") showPrevious();
-  if (event.key === "Escape") {
-    if (document.body.classList.contains("sidebar-open")) closeSidebar();
-    else leave();
-  }
+  if (event.key === "Escape") closeSidebar();
 });
 
-// The slideshow is the default view; the grid is reachable via "← Grid".
 if (projects.length) enter(order[0]);

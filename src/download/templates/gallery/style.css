@@ -7,35 +7,32 @@ body {
     margin: 0;
     min-height: 100%;
     font-family: system-ui, sans-serif;
-    background: #111;
-    color: #fff;
-}
-
-header {
-    padding: 2rem;
-}
-
-h1 {
-    margin: 0;
+    background: #fff;
+    color: #1a1a1a;
 }
 
 .card-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 1rem;
-    padding: 1rem 2rem 2rem;
+    padding: 1rem;
 }
 
 .card {
     position: relative;
-    min-height: 180px;
+    aspect-ratio: 1 / 1;
     padding: 0;
     border: 0;
-    border-radius: 16px;
     overflow: hidden;
-    background: #292929;
+    background: #e6e6e6;
     cursor: pointer;
     text-align: left;
+}
+
+/* Yellow stroke with a small offset marking the currently playing slide. */
+.card.is-current {
+    outline: 3px solid #f5c518;
+    outline-offset: 3px;
 }
 
 .card img {
@@ -46,45 +43,176 @@ h1 {
     object-fit: cover;
 }
 
+/* Card caption: a square bar flush to the bottom that slides up on hover. */
+.card .pill {
+    position: absolute;
+    inset: auto 0 0 0;
+    max-width: none;
+    top: auto;
+    left: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    backdrop-filter: none;
+    padding: 0.75rem 0.875rem;
+    transform: translateY(100%);
+    transition: transform 0.2s ease;
+}
+
+.card:hover .pill,
+.card:focus-visible .pill {
+    transform: translateY(0);
+}
+
 .card.no-thumbnail::after {
     content: 'Thumbnail unavailable';
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    color: #999;
+    color: #888;
 }
 
 .pill {
     display: flex;
     align-items: center;
-    gap: .75rem;
+    gap: 0.75rem;
     position: absolute;
     z-index: 5;
     top: 1rem;
     left: 1rem;
-    padding: .55rem .75rem;
+    padding: 0.5rem 0.875rem;
     border-radius: 999px;
-    background: #111c;
-    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
     max-width: calc(100% - 2rem);
+    line-height: 1.3;
 }
 
-.pill span:first-child {
+/* The live slide pill doubles as the expandable sidebar: collapsed it hugs its
+   content, expanded it grows into a rounded panel keeping 1rem margins. Width
+   animates on content change; width+height+radius animate on expand/collapse. */
+#slide-pill {
+    left: 1rem;
+    right: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    max-height: calc(100% - 2rem);
+    transition:
+        width 0.3s ease,
+        max-width 0.3s ease,
+        max-height 0.3s ease;
+}
+
+#pill-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    flex: 0 0 auto;
+}
+
+/* Collapsed: the card list is hidden and the pill shrinks to a rounded chip. */
+#slide-pill #sidebar-list {
+    display: none;
+}
+
+#slide-pill.expanded {
+    width: min(380px, calc(100% - 2rem));
+    max-width: none;
+    max-height: calc(100% - 2rem);
+    border-radius: 1.25rem;
+}
+
+#slide-pill.expanded #sidebar-list {
+    display: grid;
+    overflow: auto;
+    min-height: 0;
+}
+
+.pill-text {
     display: flex;
     flex-direction: column;
+    gap: 0.1rem;
     min-width: 0;
 }
 
-.pill strong,
-.pill small {
+.pill-title,
+.pill-by {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    display: block;
 }
 
-.pill small {
-    opacity: .7;
+.pill-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.pill-title:hover,
+a.pill-title:focus-visible {
+    text-decoration: underline;
+}
+
+.pill-by {
+    font-size: 0.8125rem;
+    color: #555;
+}
+
+.pill-author {
+    color: #F54949;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+a.pill-author:hover,
+a.pill-author:focus-visible {
+    text-decoration: underline;
+}
+
+/* Chevron button that expands the pill into the sidebar. Drawn as two rotated
+   borders; points down (⌄) when collapsed, up (^) when expanded. */
+.pill-menu {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1a1a1a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.pill-menu:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.pill-menu::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    /* Collapsed (⌄): chevron points down. */
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.3s ease;
+}
+
+/* Expanded (^): chevron points up. */
+#slide-pill.expanded .pill-menu::before {
+    transform: translateY(2px) rotate(-135deg);
 }
 
 #slideshow-view,
@@ -108,18 +236,13 @@ h1 {
     pointer-events: auto;
 }
 
-#slide-pill {
-    left: auto;
-    right: 1rem;
-}
-
 .progress {
     position: relative;
     width: 28px;
     height: 28px;
     flex: 0 0 auto;
     border-radius: 50%;
-    background: conic-gradient(#fff calc(var(--progress) * 1turn), #ffffff33 0);
+    background: conic-gradient(#1a1a1a calc(var(--progress) * 1turn), rgba(0, 0, 0, 0.15) 0);
 }
 
 .play-toggle {
@@ -128,8 +251,8 @@ h1 {
     border: 0;
     padding: 0;
     border-radius: 50%;
-    background: #222;
-    color: #fff;
+    background: #fff;
+    color: #1a1a1a;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -158,78 +281,14 @@ h1 {
         linear-gradient(currentColor 0 0) 100% / 3px 100% no-repeat;
 }
 
-#menu,
-#back,
-#close {
-    position: fixed;
-    z-index: 8;
-    border: 0;
-    border-radius: 999px;
-    background: #111c;
-    color: #fff;
-    padding: .75rem;
-    cursor: pointer;
-}
-
-#menu {
-    top: 1rem;
-    left: 1rem;
-    font-size: 1.25rem;
-    opacity: 0;
-    transition: opacity .25s;
-}
-
-#back {
-    right: 1rem;
-    bottom: 1rem;
-}
-
-.controls-visible #menu,
-.sidebar-open #menu {
-    opacity: 1;
-}
-
-#sidebar {
-    position: fixed;
-    z-index: 10;
-    inset: 0 auto 0 0;
-    width: min(380px, 90vw);
-    background: #171717;
-    transform: translateX(-100%);
-    transition: transform .3s;
-    overflow: auto;
-    padding-top: 3rem;
-}
-
-#sidebar .card-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    padding: 1rem;
-}
-
-#sidebar .card {
-    min-height: 150px;
-}
-
-#close {
-    position: absolute;
-    top: .5rem;
-    right: .5rem;
-    font-size: 1.5rem;
-}
-
-.sidebar-open #sidebar {
-    transform: none;
-}
-
 #scrim {
     position: fixed;
-    z-index: 9;
+    z-index: 4;
     inset: 0;
-    background: #0008;
+    background: rgba(0, 0, 0, 0.35);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .3s;
+    transition: opacity 0.3s;
 }
 
 .sidebar-open #scrim {
