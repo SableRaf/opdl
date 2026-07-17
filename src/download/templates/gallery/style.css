@@ -122,12 +122,40 @@ h1 {
     background: conic-gradient(#fff calc(var(--progress) * 1turn), #ffffff33 0);
 }
 
-.progress::after {
-    content: '';
+.play-toggle {
     position: absolute;
     inset: 4px;
+    border: 0;
+    padding: 0;
     border-radius: 50%;
     background: #222;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Play triangle (default: paused). */
+.play-toggle::after {
+    content: '';
+    width: 0;
+    height: 0;
+    margin-left: 1px;
+    border-style: solid;
+    border-width: 5px 0 5px 8px;
+    border-color: transparent transparent transparent currentColor;
+}
+
+/* Pause bars (while playing). */
+.play-toggle.is-playing::after {
+    margin-left: 0;
+    width: 8px;
+    height: 8px;
+    border: 0;
+    background:
+        linear-gradient(currentColor 0 0) 0 / 3px 100% no-repeat,
+        linear-gradient(currentColor 0 0) 100% / 3px 100% no-repeat;
 }
 
 #menu,

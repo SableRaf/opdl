@@ -60,6 +60,9 @@ let position = 0;
 let timer;
 let progressFrame;
 let idleTimer;
+let playing = autoplay;
+let elapsed = 0;
+let lastTick = 0;
 
 function thumbUrl(project) {
   return `./sketches/${encodeURIComponent(project.dir)}/metadata/thumbnail.jpg`;
@@ -73,7 +76,7 @@ function escapeText(value) {
 
 function pillMarkup(project, progress = false) {
   const indicator = progress
-    ? '<span class="progress" style="--progress:0" aria-hidden="true"></span>'
+    ? '<span class="progress" style="--progress:0"><button type="button" class="play-toggle" aria-label="Play"></button></span>'
     : "";
   return `<span><strong>${escapeText(project.displayTitle)}</strong><small>${escapeText(project.displayAuthor)}</small></span>${indicator}`;
 }
@@ -169,6 +172,7 @@ async function show(index, immediate = false) {
   if (!projects.length) return;
   clearTimeout(timer);
   cancelAnimationFrame(progressFrame);
+  elapsed = 0;
   current = (index + projects.length) % projects.length;
   const project = projects[current];
   const next = immediate ? active : 1 - active;
@@ -176,6 +180,9 @@ async function show(index, immediate = false) {
   frame.src = sketchUrl(project);
   await whenSketchReady(frame, project.engineURL);
   document.querySelector("#slide-pill").innerHTML = pillMarkup(project, true);
+  const toggle = document.querySelector(".play-toggle");
+  if (toggle) toggle.onclick = togglePlay;
+  syncPlayToggle();
   frame.style.transitionDuration = `${transition}s`;
   layers[active].style.transitionDuration = `${transition}s`;
   frame.classList.add("active");
@@ -184,14 +191,31 @@ async function show(index, immediate = false) {
   startProgress();
 }
 
+function syncPlayToggle() {
+  const toggle = document.querySelector(".play-toggle");
+  if (!toggle) return;
+  toggle.classList.toggle("is-playing", playing);
+  toggle.setAttribute("aria-label", playing ? "Pause" : "Play");
+}
+
+function togglePlay() {
+  playing = !playing;
+  syncPlayToggle();
+  startProgress();
+}
+
 function startProgress() {
+  cancelAnimationFrame(progressFrame);
   const ring = document.querySelector(".progress");
-  const start = performance.now();
+  if (ring) ring.style.setProperty("--progress", Math.min(1, elapsed / duration));
+  if (!playing) return; // Paused: freeze the ring, no animation loop.
+  lastTick = performance.now();
   const tick = (now) => {
-    const elapsed = now - start;
+    elapsed += now - lastTick;
+    lastTick = now;
     if (ring)
       ring.style.setProperty("--progress", Math.min(1, elapsed / duration));
-    if (autoplay && elapsed >= duration) showNext();
+    if (elapsed >= duration) showNext();
     else progressFrame = requestAnimationFrame(tick);
   };
   progressFrame = requestAnimationFrame(tick);
@@ -245,3 +269,6 @@ addEventListener("keydown", (event) => {
     else leave();
   }
 });
+
+// The slideshow is the default view; the grid is reachable via "← Grid".
+if (projects.length) enter(order[0]);
