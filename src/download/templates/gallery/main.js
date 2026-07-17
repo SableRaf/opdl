@@ -238,6 +238,14 @@ async function show(index, immediate = false) {
   frame.src = sketchUrl(project);
   await whenSketchReady(frame, project.engineURL);
   if (token !== showToken) return;
+  // Reflect the current sketch in the URL as ?sketch=<visualID> so the page is
+  // shareable/refreshable. replaceState keeps it out of the history stack.
+  const visualID = project.metadata?.visualID ?? project.id;
+  if (visualID != null) {
+    const url = new URL(location.href);
+    url.searchParams.set("sketch", String(visualID));
+    history.replaceState(history.state, "", url);
+  }
   document.querySelector("#pill-header").innerHTML = pillMarkup(project, {
     progress: true,
     links: true,
