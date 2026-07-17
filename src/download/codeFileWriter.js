@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { sanitizeFilename, rewriteAssetReferences, dedupeFilename } = require('../utils');
-const { buildCommentBlock } = require('./codeAttributor');
+const { buildCommentBlock, shouldAddAttribution } = require('./codeAttributor');
 
 /**
  * Write a single code block to disk, deduplicating filename collisions inside outputDir.
@@ -54,7 +54,7 @@ function writeCodeFile({
   const codeFilePath = path.join(outputDir, codeFileName);
   const rewrittenCode = rewriteAssetReferences(codeBlock.code || '', assetRenames);
   let fileContent = rewrittenCode;
-  if (addSourceComments && !fileContent.includes('Downloaded with opdl')) {
+  if (addSourceComments && shouldAddAttribution(fileExtension) && !fileContent.includes('Downloaded with opdl')) {
     const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
     fileContent = `${commentBlock}${fileContent.startsWith('\n') ? '' : '\n'}${fileContent}`;
   }
