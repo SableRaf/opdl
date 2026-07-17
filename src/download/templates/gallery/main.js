@@ -120,7 +120,7 @@ function pillMarkup(project, { progress = false, links = false, menu = false } =
     ? `<a class="pill-author" href="${escapeAttr(authorUrl)}" target="_blank" rel="noopener">${author}</a>`
     : `<span class="pill-author">${author}</span>`;
   const license = escapeText(project.displayLicense);
-  const licenseHtml = license
+  const licenseHtml = license && license.toUpperCase() !== "NONE"
     ? `<span class="pill-license">CC ${license}</span>`
     : "";
   return `${menuButton}<span class="pill-text">${titleHtml}<small class="pill-by">by ${authorHtml}${licenseHtml}</small></span>${indicator}`;
