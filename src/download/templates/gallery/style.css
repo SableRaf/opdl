@@ -90,6 +90,14 @@ body {
     line-height: 1.3;
 }
 
+/* ?blur=false: solid-ish background, no backdrop-filter. Avoids the random
+   pill flicker in OBS/CEF browser sources, where re-sampling the blur over the
+   animating sketch behind the pill is unstable. */
+#slide-pill.no-blur {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: none;
+}
+
 /* The live slide pill doubles as the expandable sidebar: collapsed it hugs its
    content, expanded it grows into a rounded panel keeping 1rem margins. Width
    animates on content change; width+height+radius animate on expand/collapse. */

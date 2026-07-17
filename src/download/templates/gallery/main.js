@@ -316,6 +316,11 @@ if (topOffset) slidePill.style.top = `calc(1rem + ${topOffset}px)`;
 // ?overlay=false hides the slide-pill; defaults to shown.
 if (!boolParam("overlay", true)) slidePill.style.display = "none";
 
+// ?blur=false drops the pill's backdrop-filter blur (and uses a more opaque
+// background instead). OBS/CEF browser sources re-sample backdrop-filter over
+// the animating sketch behind the pill inconsistently, causing random flicker.
+if (!boolParam("blur", true)) slidePill.classList.add("no-blur");
+
 function syncSidebarToggle() {
   const open = slidePill.classList.contains("expanded");
   const pillMenu = document.querySelector(".pill-menu");
