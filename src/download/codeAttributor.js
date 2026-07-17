@@ -31,10 +31,12 @@ const buildCommentBlock = (sketchInfo, fileExtension = '') => {
   const licenseDisplay = getLicenseDisplay(sketchInfo.metadata?.license);
   const sourceUrl = `https://openprocessing.org/sketch/${sketchInfo.sketchId}`;
 
-  // Determine comment style based on file extension
-  const isHtml = fileExtension === '.html' || fileExtension === '.htm';
-  const isPython = fileExtension === '.py';
-  const isShell = fileExtension === '.sh' || fileExtension === '.bash';
+  // Determine comment style based on file extension (case-insensitive to match
+  // shouldAddAttribution, e.g. an `.HTML` file must still get an HTML comment).
+  const ext = fileExtension.toLowerCase();
+  const isHtml = ext === '.html' || ext === '.htm';
+  const isPython = ext === '.py';
+  const isShell = ext === '.sh' || ext === '.bash';
 
   let lines;
 

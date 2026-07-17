@@ -189,6 +189,21 @@ describe('codeAttributor', () => {
       expect(result).toContain('Downloaded with opdl');
     });
 
+    it('should generate HTML-style comments for uppercase .HTML files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.HTML');
+
+      expect(result).toMatch(/^<!--/);
+      expect(result.trim()).toMatch(/-->$/);
+    });
+
     it('should generate HTML-style comments for .htm files', () => {
       const sketchInfo = {
         sketchId: 12345,
