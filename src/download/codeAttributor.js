@@ -17,16 +17,26 @@ const getLicenseDisplay = (licenseCode) => {
   return LICENSE_NAMES[licenseCode] || licenseCode;
 };
 
+// Only prepend attribution to file types where a leading comment is always safe.
+// Notably shaders are excluded: GLSL requires the `#version` directive on the very
+// first line, so a prepended comment block breaks compilation.
+const ATTRIBUTION_EXTENSIONS = new Set(['.js', '.html', '.htm']);
+
+const shouldAddAttribution = (fileExtension = '') =>
+  ATTRIBUTION_EXTENSIONS.has(fileExtension.toLowerCase());
+
 const buildCommentBlock = (sketchInfo, fileExtension = '') => {
   const title = sketchInfo.title || sketchInfo.metadata?.title || 'Untitled';
   const author = sketchInfo.author || sketchInfo.metadata?.fullname || 'Unknown';
   const licenseDisplay = getLicenseDisplay(sketchInfo.metadata?.license);
   const sourceUrl = `https://openprocessing.org/sketch/${sketchInfo.sketchId}`;
 
-  // Determine comment style based on file extension
-  const isHtml = fileExtension === '.html' || fileExtension === '.htm';
-  const isPython = fileExtension === '.py';
-  const isShell = fileExtension === '.sh' || fileExtension === '.bash';
+  // Determine comment style based on file extension (case-insensitive to match
+  // shouldAddAttribution, e.g. an `.HTML` file must still get an HTML comment).
+  const ext = fileExtension.toLowerCase();
+  const isHtml = ext === '.html' || ext === '.htm';
+  const isPython = ext === '.py';
+  const isShell = ext === '.sh' || ext === '.bash';
 
   let lines;
 
@@ -120,6 +130,9 @@ const addSourceComments = (sketchInfo, codeFilePaths = [], options = {}) => {
         continue;
       }
       const fileExtension = path.extname(normalizedPath);
+      if (!shouldAddAttribution(fileExtension)) {
+        continue;
+      }
       const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
       fs.writeFileSync(normalizedPath, `${commentBlock}${content.startsWith('\n') ? '' : '\n'}${content}`, 'utf8');
     } catch (error) {
@@ -130,4 +143,4 @@ const addSourceComments = (sketchInfo, codeFilePaths = [], options = {}) => {
   }
 };
 
-module.exports = { buildCommentBlock };
+module.exports = { buildCommentBlock, shouldAddAttribution };

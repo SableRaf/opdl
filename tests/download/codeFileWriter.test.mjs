@@ -71,6 +71,21 @@ describe('writeCodeFile', () => {
     expect(content).toMatch(/noop\(\);/);
   });
 
+  it('does not prepend attribution to shader files', () => {
+    const used = new Set();
+    const result = writeCodeFile({
+      outputDir: dir,
+      codeBlock: { title: 'frag.glsl', code: '#version 300 es\nvoid main() {}' },
+      index: 0,
+      sketchInfo: { sketchId: 42, title: 'T', author: 'A' },
+      addSourceComments: true,
+      usedNames: used,
+    });
+    const content = fs.readFileSync(result.codeFilePath, 'utf8');
+    expect(content).not.toMatch(/Downloaded with opdl/);
+    expect(content.startsWith('#version 300 es')).toBe(true);
+  });
+
   it('de-duplicates colliding sanitized names', () => {
     const used = new Set();
     writeCodeFile({

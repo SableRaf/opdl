@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCommentBlock } from '../../src/download/codeAttributor';
+import { buildCommentBlock, shouldAddAttribution } from '../../src/download/codeAttributor';
 
 describe('codeAttributor', () => {
   describe('buildCommentBlock', () => {
@@ -189,6 +189,21 @@ describe('codeAttributor', () => {
       expect(result).toContain('Downloaded with opdl');
     });
 
+    it('should generate HTML-style comments for uppercase .HTML files', () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        metadata: { license: 'by' },
+        isFork: false,
+      };
+
+      const result = buildCommentBlock(sketchInfo, '.HTML');
+
+      expect(result).toMatch(/^<!--/);
+      expect(result.trim()).toMatch(/-->$/);
+    });
+
     it('should generate HTML-style comments for .htm files', () => {
       const sketchInfo = {
         sketchId: 12345,
@@ -266,6 +281,24 @@ describe('codeAttributor', () => {
 
       expect(result).toMatch(/^\/\*/);
       expect(result.trim()).toMatch(/\*\/$/);
+    });
+  });
+
+  describe('shouldAddAttribution', () => {
+    it('adds attribution for .js, .html, and .htm files', () => {
+      for (const ext of ['.js', '.html', '.htm']) {
+        expect(shouldAddAttribution(ext)).toBe(true);
+      }
+    });
+
+    it('is case-insensitive', () => {
+      expect(shouldAddAttribution('.HTML')).toBe(true);
+    });
+
+    it('does not add attribution to shaders or other file types', () => {
+      for (const ext of ['.glsl', '.vert', '.frag', '.vs', '.fs', '.css', '.py', '.json', '']) {
+        expect(shouldAddAttribution(ext)).toBe(false);
+      }
     });
   });
 });
