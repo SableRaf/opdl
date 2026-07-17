@@ -321,6 +321,9 @@ if (!boolParam("overlay", true)) slidePill.style.display = "none";
 // the animating sketch behind the pill inconsistently, causing random flicker.
 if (!boolParam("blur", true)) slidePill.classList.add("no-blur");
 
+// ?shadow=false drops the pill's drop shadow; defaults to shown.
+if (!boolParam("shadow", true)) slidePill.classList.add("no-shadow");
+
 // ?backgroundColor=ffffffb3 overrides the pill's background color. The value is
 // a bare hex color (3/4/6/8 digits, no leading #); the inline style wins over
 // both the default and no-blur rules.

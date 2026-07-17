@@ -98,6 +98,11 @@ body {
     backdrop-filter: none;
 }
 
+/* ?shadow=false: drops the pill's drop shadow. */
+#slide-pill.no-shadow {
+    box-shadow: none;
+}
+
 /* The live slide pill doubles as the expandable sidebar: collapsed it hugs its
    content, expanded it grows into a rounded panel keeping 1rem margins. Width
    animates on content change; width+height+radius animate on expand/collapse. */
