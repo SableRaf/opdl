@@ -210,6 +210,11 @@ a.pill-author:focus-visible {
     text-decoration: underline;
 }
 
+.pill-license {
+    margin-left: 0.5em;
+    color: #999;
+}
+
 /* Chevron button that expands the pill into the sidebar. Drawn as two rotated
    borders; points down (⌄) when collapsed, up (^) when expanded. */
 .pill-menu {

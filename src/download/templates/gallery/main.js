@@ -31,6 +31,7 @@ const projects = await Promise.all((manifest.sketches || []).map(async (item) =>
     metadata,
     displayTitle: metadata.titleOverride ?? metadata.title ?? item.title,
     displayAuthor: metadata.authorOverride ?? authorName,
+    displayLicense: (metadata.license ?? item.license ?? "").toUpperCase(),
   };
 }));
 
@@ -118,7 +119,11 @@ function pillMarkup(project, { progress = false, links = false, menu = false } =
   const authorHtml = authorUrl
     ? `<a class="pill-author" href="${escapeAttr(authorUrl)}" target="_blank" rel="noopener">${author}</a>`
     : `<span class="pill-author">${author}</span>`;
-  return `${menuButton}<span class="pill-text">${titleHtml}<small class="pill-by">by ${authorHtml}</small></span>${indicator}`;
+  const license = escapeText(project.displayLicense);
+  const licenseHtml = license
+    ? `<span class="pill-license">CC ${license}</span>`
+    : "";
+  return `${menuButton}<span class="pill-text">${titleHtml}<small class="pill-by">by ${authorHtml}${licenseHtml}</small></span>${indicator}`;
 }
 
 function card(project, index) {
