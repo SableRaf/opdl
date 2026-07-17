@@ -39,7 +39,7 @@ const sidebarList = document.querySelector("#sidebar-list");
 const view = document.querySelector("#slideshow-view");
 const layers = [...document.querySelectorAll(".sketch-layer")];
 
-// URL query parameters override gallery.yaml, e.g. ?duration=30&shuffle=true&autoplay=false
+// URL query parameters override gallery.yaml, e.g. ?duration=30&shuffle=true&autoplay=false&top=45&overlay=false
 const params = new URLSearchParams(location.search);
 function numberParam(name, fallback) {
   if (!params.has(name)) return fallback;
@@ -308,6 +308,13 @@ function startProgress() {
 }
 
 const slidePill = document.querySelector("#slide-pill");
+
+// ?top=45 adds pixels to the slide-pill's default top margin.
+const topOffset = numberParam("top", 0);
+if (topOffset) slidePill.style.top = `calc(1rem + ${topOffset}px)`;
+
+// ?overlay=false hides the slide-pill; defaults to shown.
+if (!boolParam("overlay", true)) slidePill.style.display = "none";
 
 function syncSidebarToggle() {
   const open = slidePill.classList.contains("expanded");
