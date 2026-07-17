@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } from '../src/utils';
+import {
+  ensureDirectoryExists,
+  sanitizeFilename,
+  buildAssetRenameMap,
+  rewriteAssetReferences,
+  resolveAssetUrl,
+} from '../src/utils';
 
 describe('utils', () => {
   describe('sanitizeFilename', () => {
@@ -40,6 +46,56 @@ describe('utils', () => {
     it('should handle unicode characters', () => {
       expect(sanitizeFilename('файл.js')).toBe('файл.js');
       expect(sanitizeFilename('文件.js')).toBe('文件.js');
+    });
+  });
+
+  describe('buildAssetRenameMap', () => {
+    it('includes only files whose sanitized name differs', () => {
+      const files = [
+        { name: 'Bottle slide.m4a' },
+        { name: 'Clink.m4a' },
+        { name: 'IMG_4285.PNG' },
+      ];
+      expect(buildAssetRenameMap(files)).toEqual([
+        { original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' },
+      ]);
+    });
+
+    it('skips entries without a name and non-array input', () => {
+      expect(buildAssetRenameMap([{ size: '10' }, null, { name: '' }])).toEqual([]);
+      expect(buildAssetRenameMap(undefined)).toEqual([]);
+      expect(buildAssetRenameMap(null)).toEqual([]);
+    });
+  });
+
+  describe('rewriteAssetReferences', () => {
+    it('rewrites references to renamed assets', () => {
+      const code = "loadSound('Bottle slide.m4a'); loadSound('Clink.m4a');";
+      const renames = [{ original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' }];
+      expect(rewriteAssetReferences(code, renames)).toBe(
+        "loadSound('Bottle_slide.m4a'); loadSound('Clink.m4a');"
+      );
+    });
+
+    it('applies longer originals first so shorter names cannot clobber them', () => {
+      const code = "a('slide.m4a'); b('Bottle slide.m4a');";
+      const renames = [
+        { original: 'slide.m4a', sanitized: 'slide_x.m4a' },
+        { original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' },
+      ];
+      expect(rewriteAssetReferences(code, renames)).toBe(
+        "a('slide_x.m4a'); b('Bottle_slide.m4a');"
+      );
+    });
+
+    it('returns code unchanged when there are no renames', () => {
+      const code = "loadImage('a.png');";
+      expect(rewriteAssetReferences(code, [])).toBe(code);
+      expect(rewriteAssetReferences(code, undefined)).toBe(code);
+    });
+
+    it('handles empty code', () => {
+      expect(rewriteAssetReferences('', [{ original: 'a', sanitized: 'b' }])).toBe('');
     });
   });
 

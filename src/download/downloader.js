@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } = require('../utils');
+const {
+  ensureDirectoryExists,
+  sanitizeFilename,
+  buildAssetRenameMap,
+  resolveAssetUrl,
+} = require('../utils');
 const { generateIndexHtml } = require('./htmlGenerator');
 const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
@@ -27,6 +32,11 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
   const rootUsedNames = new Set();
 
+  const files = Array.isArray(sketchInfo.files) ? sketchInfo.files : [];
+  // Assets are saved under sanitized names; rewrite code references to match so
+  // loadImage/loadSound don't 404 into the dev server's HTML fallback.
+  const assetRenames = buildAssetRenameMap(files);
+
   for (let index = 0; index < codeParts.length; index += 1) {
     const { codeFilePath, sanitizedCodeBlock } = writeCodeFile({
       outputDir,
@@ -36,13 +46,13 @@ const downloadSketch = async (sketchInfo, options = {}) => {
       addSourceComments: shouldAddSourceComments,
       fallbackBase: 'part',
       usedNames: rootUsedNames,
+      assetRenames,
     });
     savedCodeFiles.push(codeFilePath);
     sanitizedCodeParts.push(sanitizedCodeBlock);
   }
 
   const assetBaseUrl = sketchInfo.metadata?.fileBase;
-  const files = Array.isArray(sketchInfo.files) ? sketchInfo.files : [];
   const shouldDownloadAssets = finalOptions.downloadAssets !== false;
 
   if (shouldDownloadAssets && files.length) {
