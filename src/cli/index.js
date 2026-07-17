@@ -6,7 +6,7 @@
 
 /**
  * @typedef {Object} ParsedCommand
- * @property {'fields'|'sketch'|'user'|'curation'} command - Main command
+ * @property {'fields'|'sketch'|'user'|'curation'|'auth'|'health'} command - Main command
  * @property {string} [subcommand] - Subcommand (download, info, sketches, etc.)
  * @property {string|number} [id] - Entity ID
  * @property {Object} options - Command options
@@ -44,6 +44,14 @@ function parseArgs(argv) {
   if (argv[0] === 'auth') {
     return {
       command: 'auth',
+      options: parseOptions(argv.slice(1)),
+    };
+  }
+
+  // Handle: opdl health [options]
+  if (argv[0] === 'health') {
+    return {
+      command: 'health',
       options: parseOptions(argv.slice(1)),
     };
   }

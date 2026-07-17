@@ -3,6 +3,24 @@ import { parseArgs, parseOptions } from '../../src/cli/index.js';
 
 describe('CLI Parser', () => {
   describe('parseArgs', () => {
+    describe('health command', () => {
+      it('should parse health command', () => {
+        const result = parseArgs(['health']);
+        expect(result).toEqual({
+          command: 'health',
+          options: {}
+        });
+      });
+
+      it('should parse health command with --json', () => {
+        const result = parseArgs(['health', '--json']);
+        expect(result).toEqual({
+          command: 'health',
+          options: { json: true }
+        });
+      });
+    });
+
     describe('fields command', () => {
       it('should parse fields command without field set', () => {
         const result = parseArgs(['fields']);

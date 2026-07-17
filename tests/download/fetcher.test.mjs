@@ -173,6 +173,22 @@ describe('fetcher', () => {
       expect(result.codeParts).toHaveLength(0);
     });
 
+    it('classifies a metadata transport failure as API_ERROR, not NOT_FOUND', async () => {
+      const sketchId = 12345;
+
+      nock('https://openprocessing.org')
+        .get(`/api/sketch/${sketchId}`)
+        .replyWithError('ECONNRESET');
+
+      const result = await fetchSketchInfo(sketchId, { quiet: true });
+
+      expect(result.available).toBe(false);
+      // A network failure must not masquerade as a missing sketch — otherwise
+      // the caller's health probe would be skipped during an outage.
+      expect(result.unavailableReason).toBe(VALIDATION_REASONS.API_ERROR);
+      expect(result.metadata).toEqual({});
+    });
+
     it('should handle fork sketches correctly', async () => {
       const sketchId = 12345;
       const parentId = 67890;

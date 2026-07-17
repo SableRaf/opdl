@@ -9,6 +9,7 @@ Complete command reference and documentation for opdl.
 - [Quick Start](#quick-start)
 - [Authentication](#authentication)
 - [Commands](#commands)
+  - [Diagnostics](#diagnostics)
   - [Field Discovery](#field-discovery)
   - [Sketch Commands](#sketch-commands)
   - [User Commands](#user-commands)
@@ -138,6 +139,31 @@ opdl -h
 ```
 
 Shows usage information and available commands.
+
+### Diagnostics
+
+#### Check API health
+
+```bash
+opdl health
+```
+
+Queries the OpenProcessing API health endpoint and reports its status:
+
+```
+OpenProcessing API: OK
+API version: 23.0.10
+```
+
+Add `--json` for machine-readable output, and `--quiet` to suppress it (the exit
+code is still `0` when healthy and non-zero when the API is degraded or
+unreachable, which is useful in scripts and CI).
+
+opdl also runs this check automatically after an unexpected download failure. If
+the API reports healthy, the failure is likely a bug in opdl or an issue with
+that specific sketch; if it doesn't, the failure is likely an OpenProcessing API
+issue. Expected conditions (a missing, private, or code-hidden sketch) do not
+trigger the automatic check.
 
 ### Field Discovery
 

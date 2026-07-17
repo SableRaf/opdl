@@ -113,7 +113,17 @@ const fetchSketchInfo = async (sketchId, options = {}) => {
   };
 
   // Fetch metadata
-  const { data: metadata } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet, token });
+  const { data: metadata, error: metadataError } = await fetchData(`https://openprocessing.org/api/sketch/${parsedId}`, `metadata of sketch ${parsedId}`, { quiet, token });
+
+  // A transport-level failure yields `data: null` with an error set. Left to
+  // validateSketch, a null response is classified as NOT_FOUND — which would
+  // masquerade an API outage as a missing sketch and skip the health probe.
+  // Flag it as API_ERROR so callers treat it as an unexpected/transient failure.
+  if (metadata == null && metadataError) {
+    setUnavailable(VALIDATION_REASONS.API_ERROR, metadataError);
+    sketchInfo.metadata = {};
+    return sketchInfo;
+  }
 
   // Validate metadata
   const metadataValidation = validateSketch(metadata, { type: 'metadata' });
