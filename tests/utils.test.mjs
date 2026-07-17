@@ -12,6 +12,18 @@ describe('utils', () => {
       expect(sanitizeFilename('file\\name.js')).toBe('filename.js');
     });
 
+    it('should strip URL-fragile characters (#, ?, %, comma)', () => {
+      // These are legal in filenames but get percent-encoded in the fetch
+      // URL and many static servers don't decode them back to a file path,
+      // so the gallery fails to find the sketch/thumbnail. Only letters,
+      // digits, spaces, '.', '-', '_' survive.
+      expect(sanitizeFilename('Genuary 2023 #6 Chrome At Last'))
+        .toBe('Genuary_2023_6_Chrome_At_Last');
+      expect(sanitizeFilename('what? maybe 50%')).toBe('what_maybe_50');
+      expect(sanitizeFilename('2D Canvas, 6 circles, 10 lines, 5'))
+        .toBe('2D_Canvas_6_circles_10_lines_5');
+    });
+
     it('should replace spaces with underscores', () => {
       expect(sanitizeFilename('my file.js')).toBe('my_file.js');
       expect(sanitizeFilename('my   file.js')).toBe('my_file.js');
