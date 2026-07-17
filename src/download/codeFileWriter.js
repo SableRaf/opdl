@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { sanitizeFilename, rewriteAssetReferences } = require('../utils');
+const { sanitizeFilename, rewriteAssetReferences, dedupeFilename } = require('../utils');
 const { buildCommentBlock } = require('./codeAttributor');
 
 /**
@@ -48,17 +48,7 @@ function writeCodeFile({
   fileExtension = path.extname(codeFileName) || '.js';
 
   // De-dup within outputDir.
-  if (usedNames.has(codeFileName)) {
-    const ext = path.extname(codeFileName);
-    const base = codeFileName.slice(0, codeFileName.length - ext.length);
-    let suffix = 2;
-    let candidate = `${base}_${suffix}${ext}`;
-    while (usedNames.has(candidate)) {
-      suffix += 1;
-      candidate = `${base}_${suffix}${ext}`;
-    }
-    codeFileName = candidate;
-  }
+  codeFileName = dedupeFilename(codeFileName, usedNames);
   usedNames.add(codeFileName);
 
   const codeFilePath = path.join(outputDir, codeFileName);

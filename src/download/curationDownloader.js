@@ -4,6 +4,7 @@ const opdl = require('../index');
 const { sanitizeFilename } = require('../utils');
 const { scaffoldGalleryProject } = require('./galleryScaffolder');
 const { promptConflictAction } = require('./conflictPrompt');
+const { promptFilenameConflictAction } = require('./filenameConflictPrompt');
 
 const RETRY_DELAYS = [1000, 2000];
 const sleepDefault = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,7 +52,8 @@ function galleryYaml() {
 
 async function downloadCuration({
   curationId, client, opdlFn = opdl, scaffoldFn = scaffoldGalleryProject,
-  onConflict = promptConflictAction, options = {}, sleep = sleepDefault,
+  onConflict = promptConflictAction, onFilenameConflict = promptFilenameConflictAction,
+  options = {}, sleep = sleepDefault,
 }) {
   const curation = await client.getCuration(curationId);
   const limit = Number.isFinite(options.limit) ? options.limit : undefined;
@@ -69,6 +71,22 @@ async function downloadCuration({
   // (or forces a policy up front with --skipExisting / --overwrite).
   let conflictPolicy = options.overwrite ? 'overwrite' : (options.skipExisting ? 'skip' : null);
   let cancelled = false;
+
+  // Policy for uploaded-file-vs-code-object name collisions (see
+  // filenameConflictPrompt). Prompt once, then apply to the rest of the run.
+  // Passed into each downloadSketch call so the collision — detected inside
+  // downloadSketch — is resolved by this shared, batch-aware handler rather
+  // than downloadSketch's own per-sketch prompt.
+  let filenamePolicy = null;
+  const curationFilenameConflict = async ({ filename }) => {
+    if (filenamePolicy) return filenamePolicy;
+    const action = await onFilenameConflict({ filename, quiet: options.quiet, batch: true });
+    if (action.endsWith('-all')) {
+      filenamePolicy = action.slice(0, -'-all'.length);
+      return filenamePolicy;
+    }
+    return action;
+  };
 
   for (let index = 0; index < sketches.length; index += 1) {
     const sketch = sketches[index];
@@ -110,6 +128,7 @@ async function downloadCuration({
           createOpMetadata: options.createOpMetadata !== false,
           verbose: options.verbose || false,
           token: options.token,
+          onFilenameConflict: curationFilenameConflict,
           vite: false, run: false, quiet: true,
         });
         if (!result?.success) {

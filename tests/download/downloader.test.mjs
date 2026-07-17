@@ -199,6 +199,94 @@ describe('downloader', () => {
       expect(fs.existsSync(path.join(testDir, 'image.png'))).toBe(true);
     });
 
+    describe('uploaded file vs code object name collision', () => {
+      const codeHtml = '<script src="mySketch.js"></script>';
+      const uploadHtml = '<script src="sketch.js"></script>';
+
+      const makeSketchInfo = () => ({
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        codeParts: [
+          { title: 'index.html', code: codeHtml },
+          { title: 'mySketch.js', code: 'console.log("test");' },
+        ],
+        files: [{ name: 'index.html' }],
+        metadata: { mode: 'html', fileBase: 'https://example.com/assets' },
+      });
+
+      const baseOptions = {
+        outputDir: testDir,
+        downloadAssets: true,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      };
+
+      it('keeps both by renaming the uploaded file (default)', async () => {
+        nock('https://example.com').get('/assets/index.html').reply(200, uploadHtml);
+
+        await downloadSketch(makeSketchInfo(), {
+          ...baseOptions,
+          onFilenameConflict: async () => 'keep-both',
+        });
+
+        // Code object keeps the canonical name; upload lands under index_2.html.
+        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(codeHtml);
+        expect(fs.readFileSync(path.join(testDir, 'index_2.html'), 'utf8')).toBe(uploadHtml);
+      });
+
+      it('skips the uploaded file when asked', async () => {
+        const upload = nock('https://example.com')
+          .get('/assets/index.html')
+          .reply(200, uploadHtml);
+
+        await downloadSketch(makeSketchInfo(), {
+          ...baseOptions,
+          onFilenameConflict: async () => 'skip-upload',
+        });
+
+        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(codeHtml);
+        expect(fs.existsSync(path.join(testDir, 'index_2.html'))).toBe(false);
+        // Skipped before fetching.
+        expect(upload.isDone()).toBe(false);
+        nock.cleanAll();
+      });
+
+      it('overwrites the code object when asked', async () => {
+        nock('https://example.com').get('/assets/index.html').reply(200, uploadHtml);
+
+        await downloadSketch(makeSketchInfo(), {
+          ...baseOptions,
+          onFilenameConflict: async () => 'overwrite-code',
+        });
+
+        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(uploadHtml);
+        expect(fs.existsSync(path.join(testDir, 'index_2.html'))).toBe(false);
+      });
+
+      it('is not triggered when names do not collide', async () => {
+        let called = false;
+        nock('https://example.com').get('/assets/data.json').reply(200, '{}');
+
+        const info = makeSketchInfo();
+        info.files = [{ name: 'data.json' }];
+
+        await downloadSketch(info, {
+          ...baseOptions,
+          onFilenameConflict: async () => {
+            called = true;
+            return 'keep-both';
+          },
+        });
+
+        expect(called).toBe(false);
+        expect(fs.existsSync(path.join(testDir, 'data.json'))).toBe(true);
+      });
+    });
+
     it('should skip assets when downloadAssets is false', async () => {
       const sketchInfo = {
         sketchId: 12345,
