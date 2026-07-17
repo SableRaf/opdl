@@ -256,10 +256,11 @@ describe('downloader', () => {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
       expect(metadata.title).toBe('Test');
       expect(metadata.mode).toBe('p5js');
+      expect(metadata.author).toBe('Author');
     });
 
     it('should download thumbnail when enabled', async () => {
-      nock('https://openprocessing-usercontent.s3.amazonaws.com')
+      nock('https://kyoko.openprocessing.org')
         .get('/thumbnails/visualThumbnail999@2x.jpg')
         .reply(200, Buffer.from('fake-thumbnail'));
 

@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { ensureDirectoryExists, sanitizeFilename, resolveAssetUrl } from '../src/utils';
+import {
+  ensureDirectoryExists,
+  sanitizeFilename,
+  buildAssetRenameMap,
+  rewriteAssetReferences,
+  resolveAssetUrl,
+} from '../src/utils';
 
 describe('utils', () => {
   describe('sanitizeFilename', () => {
@@ -10,6 +16,18 @@ describe('utils', () => {
       expect(sanitizeFilename('file:name.js')).toBe('filename.js');
       expect(sanitizeFilename('file/name.js')).toBe('filename.js');
       expect(sanitizeFilename('file\\name.js')).toBe('filename.js');
+    });
+
+    it('should strip URL-fragile characters (#, ?, %, comma)', () => {
+      // These are legal in filenames but get percent-encoded in the fetch
+      // URL and many static servers don't decode them back to a file path,
+      // so the gallery fails to find the sketch/thumbnail. Only letters,
+      // digits, spaces, '.', '-', '_' survive.
+      expect(sanitizeFilename('Genuary 2023 #6 Chrome At Last'))
+        .toBe('Genuary_2023_6_Chrome_At_Last');
+      expect(sanitizeFilename('what? maybe 50%')).toBe('what_maybe_50');
+      expect(sanitizeFilename('2D Canvas, 6 circles, 10 lines, 5'))
+        .toBe('2D_Canvas_6_circles_10_lines_5');
     });
 
     it('should replace spaces with underscores', () => {
@@ -28,6 +46,56 @@ describe('utils', () => {
     it('should handle unicode characters', () => {
       expect(sanitizeFilename('файл.js')).toBe('файл.js');
       expect(sanitizeFilename('文件.js')).toBe('文件.js');
+    });
+  });
+
+  describe('buildAssetRenameMap', () => {
+    it('includes only files whose sanitized name differs', () => {
+      const files = [
+        { name: 'Bottle slide.m4a' },
+        { name: 'Clink.m4a' },
+        { name: 'IMG_4285.PNG' },
+      ];
+      expect(buildAssetRenameMap(files)).toEqual([
+        { original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' },
+      ]);
+    });
+
+    it('skips entries without a name and non-array input', () => {
+      expect(buildAssetRenameMap([{ size: '10' }, null, { name: '' }])).toEqual([]);
+      expect(buildAssetRenameMap(undefined)).toEqual([]);
+      expect(buildAssetRenameMap(null)).toEqual([]);
+    });
+  });
+
+  describe('rewriteAssetReferences', () => {
+    it('rewrites references to renamed assets', () => {
+      const code = "loadSound('Bottle slide.m4a'); loadSound('Clink.m4a');";
+      const renames = [{ original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' }];
+      expect(rewriteAssetReferences(code, renames)).toBe(
+        "loadSound('Bottle_slide.m4a'); loadSound('Clink.m4a');"
+      );
+    });
+
+    it('applies longer originals first so shorter names cannot clobber them', () => {
+      const code = "a('slide.m4a'); b('Bottle slide.m4a');";
+      const renames = [
+        { original: 'slide.m4a', sanitized: 'slide_x.m4a' },
+        { original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' },
+      ];
+      expect(rewriteAssetReferences(code, renames)).toBe(
+        "a('slide_x.m4a'); b('Bottle_slide.m4a');"
+      );
+    });
+
+    it('returns code unchanged when there are no renames', () => {
+      const code = "loadImage('a.png');";
+      expect(rewriteAssetReferences(code, [])).toBe(code);
+      expect(rewriteAssetReferences(code, undefined)).toBe(code);
+    });
+
+    it('handles empty code', () => {
+      expect(rewriteAssetReferences('', [{ original: 'a', sanitized: 'b' }])).toBe('');
     });
   });
 

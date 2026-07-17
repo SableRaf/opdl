@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { sanitizeFilename } = require('../utils');
+const { sanitizeFilename, rewriteAssetReferences } = require('../utils');
 const { buildCommentBlock } = require('./codeAttributor');
 
 /**
@@ -15,6 +15,9 @@ const { buildCommentBlock } = require('./codeAttributor');
  * @param {boolean} params.addSourceComments - Whether to prepend the attribution block.
  * @param {string} [params.fallbackBase='part'] - Base name when title is missing.
  * @param {Set<string>} params.usedNames - Caller-owned Set; mutated to track collisions.
+ * @param {Array<{original: string, sanitized: string}>} [params.assetRenames=[]] -
+ *   Asset filename rewrites to apply to the code so references match the
+ *   sanitized names written to disk.
  * @returns {{ codeFilePath: string, sanitizedCodeBlock: Object, codeFileName: string }}
  */
 function writeCodeFile({
@@ -25,6 +28,7 @@ function writeCodeFile({
   addSourceComments,
   fallbackBase = 'part',
   usedNames,
+  assetRenames = [],
 }) {
   if (!usedNames || typeof usedNames.has !== 'function') {
     throw new Error('writeCodeFile: usedNames Set is required');
@@ -58,7 +62,8 @@ function writeCodeFile({
   usedNames.add(codeFileName);
 
   const codeFilePath = path.join(outputDir, codeFileName);
-  let fileContent = codeBlock.code || '';
+  const rewrittenCode = rewriteAssetReferences(codeBlock.code || '', assetRenames);
+  let fileContent = rewrittenCode;
   if (addSourceComments && !fileContent.includes('Downloaded with opdl')) {
     const commentBlock = buildCommentBlock(sketchInfo, fileExtension);
     fileContent = `${commentBlock}${fileContent.startsWith('\n') ? '' : '\n'}${fileContent}`;
@@ -68,7 +73,7 @@ function writeCodeFile({
   return {
     codeFilePath,
     codeFileName,
-    sanitizedCodeBlock: { ...codeBlock, title: codeFileName },
+    sanitizedCodeBlock: { ...codeBlock, title: codeFileName, code: rewrittenCode },
   };
 }
 

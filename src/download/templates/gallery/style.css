@@ -1,0 +1,351 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+    font-family: system-ui, sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+}
+
+.card-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.card {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    background: #e6e6e6;
+    cursor: pointer;
+    text-align: left;
+}
+
+/* Yellow stroke with a small offset marking the currently playing slide. */
+.card.is-current {
+    outline: 3px solid #f5c518;
+    outline-offset: 3px;
+}
+
+.card img {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    object-fit: cover;
+}
+
+/* Card caption: a square bar flush to the bottom that slides up on hover. */
+.card .pill {
+    position: absolute;
+    inset: auto 0 0 0;
+    max-width: none;
+    top: auto;
+    left: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    backdrop-filter: none;
+    padding: 0.75rem 0.875rem;
+    transform: translateY(100%);
+    transition: transform 0.2s ease;
+}
+
+.card:hover .pill,
+.card:focus-visible .pill {
+    transform: translateY(0);
+}
+
+.card.no-thumbnail::after {
+    content: 'Thumbnail unavailable';
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #888;
+}
+
+.pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: absolute;
+    z-index: 5;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    max-width: calc(100% - 2rem);
+    line-height: 1.3;
+}
+
+/* ?blur=false: solid-ish background, no backdrop-filter. Avoids the random
+   pill flicker in OBS/CEF browser sources, where re-sampling the blur over the
+   animating sketch behind the pill is unstable. */
+#slide-pill.no-blur {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: none;
+}
+
+/* ?shadow=false: drops the pill's drop shadow. */
+#slide-pill.no-shadow {
+    box-shadow: none;
+}
+
+/* The live slide pill doubles as the expandable sidebar: collapsed it hugs its
+   content, expanded it grows into a rounded panel keeping 1rem margins. Width
+   animates on content change; width+height+radius animate on expand/collapse. */
+#slide-pill {
+    left: 1rem;
+    right: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    max-height: calc(100% - 2rem);
+    transition:
+        width 0.3s ease,
+        max-width 0.3s ease,
+        max-height 0.3s ease;
+}
+
+#pill-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    flex: 0 0 auto;
+}
+
+/* Collapsed: the card list is hidden and the pill shrinks to a rounded chip. */
+#slide-pill #sidebar-list {
+    display: none;
+}
+
+#slide-pill.expanded {
+    width: min(380px, calc(100% - 2rem));
+    max-width: none;
+    max-height: calc(100% - 2rem);
+    border-radius: 1.25rem;
+}
+
+#slide-pill.expanded #sidebar-list {
+    display: grid;
+    overflow-y: auto;
+    min-height: 0;
+    align-content: start;
+    /* Square rows: fix each row's height to the column width so cards can't
+       overflow their track and overlap the row below (which happened when rows
+       were auto-sized from the card's aspect-ratio). Panel content width is the
+       expanded pill width minus its 1rem side padding; each of the two equal
+       columns is (that - 1rem gap) / 2. */
+    grid-auto-rows: calc((min(380px, 100vw - 2rem) - 2rem - 1rem) / 2);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+/* The grid track is a fixed square; let the card fill it instead of using its
+   own aspect-ratio (which the grid was collapsing, causing the overlap). */
+#slide-pill.expanded .card {
+    aspect-ratio: auto;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Transparent scrollbar track (WebKit/Blink). */
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#slide-pill.expanded #sidebar-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 999px;
+}
+
+
+.pill-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.pill-title,
+.pill-by {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.pill-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.pill-title:hover,
+a.pill-title:focus-visible {
+    text-decoration: underline;
+}
+
+.pill-by {
+    font-size: 0.8125rem;
+    color: #555;
+}
+
+.pill-author {
+    color: #F54949;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+a.pill-author:hover,
+a.pill-author:focus-visible {
+    text-decoration: underline;
+}
+
+.pill-license {
+    margin-left: 0.5em;
+    color: #999;
+}
+
+/* Chevron button that expands the pill into the sidebar. Drawn as two rotated
+   borders; points down (⌄) when collapsed, up (^) when expanded. */
+.pill-menu {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1a1a1a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.pill-menu:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.pill-menu::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    /* Collapsed (⌄): chevron points down. */
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.3s ease;
+}
+
+/* Expanded (^): chevron points up. */
+#slide-pill.expanded .pill-menu::before {
+    transform: translateY(2px) rotate(-135deg);
+}
+
+#slideshow-view,
+#layers,
+.sketch-layer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.sketch-layer {
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sketch-layer.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.progress {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: conic-gradient(#626262 calc(var(--progress) * 1turn), rgba(0, 0, 0, 0.15) 0);
+}
+
+.play-toggle {
+    position: absolute;
+    inset: 4px;
+    border: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #1a1a1a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Play triangle (default: paused). */
+.play-toggle::after {
+    content: '';
+    width: 0;
+    height: 0;
+    margin-left: 1px;
+    border-style: solid;
+    border-width: 5px 0 5px 8px;
+    border-color: transparent transparent transparent currentColor;
+}
+
+/* Pause bars (while playing). */
+.play-toggle.is-playing::after {
+    margin-left: 0;
+    width: 8px;
+    height: 8px;
+    border: 0;
+    background:
+        linear-gradient(currentColor 0 0) 0 / 3px 100% no-repeat,
+        linear-gradient(currentColor 0 0) 100% / 3px 100% no-repeat;
+}
+
+#scrim {
+    position: fixed;
+    z-index: 4;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.sidebar-open #scrim {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+[hidden] {
+    display: none !important;
+}

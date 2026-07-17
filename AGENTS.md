@@ -20,6 +20,7 @@ This file provides guidance to coding agents (such as Claude, Codex, or GitHub C
 npm test                 # Run all tests (Vitest)
 npm run test:watch       # Run tests in watch mode
 npm run test:coverage    # Run tests with coverage report
+npm run test:live        # Validate field registry against the live API (uses OP_API_KEY)
 ```
 
 ### Local Development

@@ -146,6 +146,10 @@ describe('CLI Parser', () => {
     });
 
     describe('curation command', () => {
+      it('should parse curation download and --max alias', () => {
+        const result = parseArgs(['curation', 'download', '456', '--max=3']);
+        expect(result).toMatchObject({ command: 'curation', subcommand: 'download', id: '456', options: { limit: 3 } });
+      });
       it('should parse curation info command', () => {
         const result = parseArgs(['curation', '456']);
         expect(result).toEqual({

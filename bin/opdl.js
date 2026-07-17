@@ -157,6 +157,7 @@ ${h('COMMANDS:')}
   ${sub('Curation Commands:')}
     ${bin('opdl')} ${cmd('curation')} ${arg('<id>')} ${arg('[options]')}          Display curation information
     ${bin('opdl')} ${cmd('curation sketches')} ${arg('<id>')} ${arg('[options]')} List sketches in curation
+    ${bin('opdl')} ${cmd('curation download')} ${arg('<id>')} ${arg('[options]')} Download curation as a gallery
 
 ${h('OPTIONS:')}
 
@@ -167,6 +168,7 @@ ${h('OPTIONS:')}
 
   ${sub('List Options (for list commands):')}
     ${flag('--limit')} ${arg('<n>')}            Limit number of results
+    ${flag('--max')} ${arg('<n>')}              Alias for --limit
     ${flag('--offset')} ${arg('<n>')}           Skip first n results
     ${flag('--sort')} ${arg('<asc|desc>')}      Sort order
 
@@ -204,6 +206,7 @@ ${h('EXAMPLES:')}
   ${dim('# Curation operations')}
   ${dim('opdl curation 12 --info title,description')}
   ${dim('opdl curation sketches 12 --limit 20 --sort desc')}
+  ${dim('opdl curation download 12 --max 10 --outputDir ./gallery')}
 
 ${h('ENVIRONMENT:')}
   ${arg('OP_API_KEY')}    OpenProcessing API bearer token

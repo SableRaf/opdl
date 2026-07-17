@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:live": "OPDL_LIVE_TESTS=1 vitest run tests/validate-fields.test.mjs",
     "test:verbose": "TEST_VERBOSE=1 vitest run",
+    "gallery:demo": "node scripts/galleryDemo.js",
     "pack:dry-run": "npm pack --dry-run",
     "link": "npm link",
     "unlink": "npm unlink -g opdl",
@@ -46,6 +48,7 @@
   },
   "dependencies": {
     "axios": "^1.7.7",
+    "prompts": "^2.4.2",
     "sanitize-filename": "^1.6.3"
   },
   "engines": {

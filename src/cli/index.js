@@ -23,6 +23,8 @@
  * @property {boolean} [options.addSourceComments] - Add source attribution comments
  * @property {boolean} [options.createLicenseFile] - Create license file
  * @property {boolean} [options.createOpMetadata] - Create OP metadata file
+ * @property {boolean} [options.overwrite] - Overwrite existing sketches without prompting
+ * @property {boolean} [options.skipExisting] - Skip existing sketches without prompting
  * @property {boolean} [options.vite] - Set up Vite project structure
  * @property {boolean} [options.run] - Automatically run dev server after scaffolding
  * @property {boolean} [options.verbose] - Print detailed download info and error diagnostics
@@ -97,7 +99,7 @@ function parseArgs(argv) {
   // Handle: opdl curation <subcommand> <id> [options]
   // or: opdl curation <id> [options] (for curation info)
   if (argv[0] === 'curation') {
-    const possibleSubcommands = ['sketches'];
+    const possibleSubcommands = ['sketches', 'download'];
     let subcommand = null;
     let id = null;
     let optionsStart = 1;
@@ -166,6 +168,13 @@ function parseOptions(args) {
     else if (arg === '--skipOpMetadata') options.createOpMetadata = false;
     else if (arg === '--vite') options.vite = true;
     else if (arg === '--run') options.run = true;
+    else if (arg === '--overwrite') {
+      options.overwrite = true;
+      options.skipExisting = false;
+    } else if (arg === '--skipExisting') {
+      options.skipExisting = true;
+      options.overwrite = false;
+    }
     else if (arg === '--verbose') options.verbose = true;
     // Value flags with = syntax
     else if (arg.startsWith('--token=')) {
@@ -174,7 +183,7 @@ function parseOptions(args) {
       options.info = arg.split('=')[1];
     } else if (arg.startsWith('--outputDir=')) {
       options.outputDir = arg.split('=')[1];
-    } else if (arg.startsWith('--limit=')) {
+    } else if (arg.startsWith('--limit=') || arg.startsWith('--max=')) {
       options.limit = parseInt(arg.split('=')[1], 10);
     } else if (arg.startsWith('--offset=')) {
       options.offset = parseInt(arg.split('=')[1], 10);
@@ -188,7 +197,7 @@ function parseOptions(args) {
       options.info = args[++i];
     } else if (arg === '--outputDir') {
       options.outputDir = args[++i];
-    } else if (arg === '--limit') {
+    } else if (arg === '--limit' || arg === '--max') {
       options.limit = parseInt(args[++i], 10);
     } else if (arg === '--offset') {
       options.offset = parseInt(args[++i], 10);
