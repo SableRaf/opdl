@@ -28,6 +28,7 @@ const MESSAGES = {
 const API_PATTERNS = {
   HIDDEN_CODE: 'Sketch source code is hidden.',
   PRIVATE_SKETCH: 'private sketch',
+  NOT_FOUND: "doesn't exist",
 };
 
 /**
@@ -74,6 +75,23 @@ const isCodeHidden = (responseData) => {
 };
 
 /**
+ * Check if a response indicates a resource that doesn't exist.
+ * The API returns this as a generic `{ success: false }` envelope, so match on
+ * the message text to classify it as NOT_FOUND rather than a transient error.
+ * @param {*} responseData - API response data
+ * @returns {boolean}
+ */
+const isNotFoundResponse = (responseData) => {
+  if (!responseData || responseData.success !== false) {
+    return false;
+  }
+  return (
+    typeof responseData.message === 'string' &&
+    responseData.message.toLowerCase().includes(API_PATTERNS.NOT_FOUND)
+  );
+};
+
+/**
  * Validate common API response patterns
  * @param {*} responseData - API response data
  * @param {string} resourceType - Type of resource ('sketch', 'user', 'curation')
@@ -113,6 +131,19 @@ const validateResponse = (responseData, resourceType) => {
       valid: false,
       reason: VALIDATION_REASONS.CODE_HIDDEN,
       message: MESSAGES.HIDDEN_CODE,
+      data: responseData,
+      canRetry: false,
+    };
+  }
+
+  // Check for a resource that doesn't exist (returned as a generic error
+  // envelope by the API). Classified as NOT_FOUND so callers don't treat a
+  // plainly-missing resource as a transient/unexpected API failure.
+  if (isNotFoundResponse(responseData)) {
+    return {
+      valid: false,
+      reason: VALIDATION_REASONS.NOT_FOUND,
+      message: responseData.message,
       data: responseData,
       canRetry: false,
     };
@@ -483,6 +514,7 @@ module.exports = {
   // Helper functions
   isPrivateResponse,
   isCodeHidden,
+  isNotFoundResponse,
 
   // Constants
   VALIDATION_REASONS,

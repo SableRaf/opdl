@@ -10,6 +10,7 @@ const { handleSketchCommand } = require(path.join(__dirname, '..', 'src', 'cli',
 const { handleUserCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'user.js'));
 const { handleCurationCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'curation.js'));
 const { handleAuthCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'auth.js'));
+const { handleHealthCommand } = require(path.join(__dirname, '..', 'src', 'cli', 'commands', 'health.js'));
 const c = require(path.join(__dirname, '..', 'src', 'cli', 'colors.js'));
 
 function isLinkedLocalInstall() {
@@ -67,6 +68,10 @@ async function main() {
         handleAuthCommand(parsed.options);
         break;
 
+      case 'health':
+        await handleHealthCommand({ options: parsed.options });
+        break;
+
       case 'fields':
         await handleFieldsCommand({
           fieldSetName: parsed.id,
@@ -105,8 +110,12 @@ async function main() {
 
     process.exit(0);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
+    // Handlers that already reported their own status (e.g. `health` printing a
+    // degraded API) set `reported` so we don't tack on a redundant "Error:" line.
+    if (!error.reported) {
+      console.error(`Error: ${error.message}`);
+    }
+    process.exit(error.exitCode || 1);
   }
 }
 
@@ -136,6 +145,9 @@ ${h('COMMANDS:')}
     ${bin('opdl')} ${cmd('auth')} ${flag('--token')} ${arg('<token>')}             Save API token to ~/.opdlrc
     ${bin('opdl')} ${cmd('auth')} ${flag('--clear')}                     Remove saved token
     ${bin('opdl')} ${cmd('auth')}                             Show token status
+
+  ${sub('Diagnostics:')}
+    ${bin('opdl')} ${cmd('health')}                           Check OpenProcessing API status
 
   ${sub('Field Discovery:')}
     ${bin('opdl')} ${cmd('fields')}                           List all available field sets
@@ -202,6 +214,10 @@ ${h('EXAMPLES:')}
   ${dim('opdl user @Sableraph --info fullname,website,createdOn')}
   ${dim('opdl user sketches @Sableraph --limit 10 --info visualID,title')}
   ${dim('opdl user followers @Sableraph --json')}
+
+  ${dim('# Diagnostics')}
+  ${dim('opdl health')}
+  ${dim('opdl health --json')}
 
   ${dim('# Curation operations')}
   ${dim('opdl curation 12 --info title,description')}

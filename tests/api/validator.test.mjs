@@ -130,6 +130,18 @@ describe('Validator Module', () => {
       assert.equal(result.canRetry, true);
     });
 
+    it('should classify a "doesn\'t exist" envelope as not_found (not a transient error)', () => {
+      const response = {
+        success: false,
+        message: "Sketch doesn't exist.",
+      };
+      const result = validateResponse(response, 'sketch');
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, VALIDATION_REASONS.NOT_FOUND);
+      assert.equal(result.message, "Sketch doesn't exist.");
+      assert.equal(result.canRetry, false);
+    });
+
     it('should return null for valid response', () => {
       const response = {
         success: true,

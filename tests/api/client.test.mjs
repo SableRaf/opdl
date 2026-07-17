@@ -419,6 +419,43 @@ describe('OpenProcessingClient', () => {
     });
   });
 
+  describe('getHealth', () => {
+    it('returns ok:true with parsed status/version for a healthy API', async () => {
+      nock(BASE_URL)
+        .get('/api/health')
+        .reply(200, {
+          success: true,
+          message: 'OK',
+          object: { status: 'ok', timestamp: '2026-05-17 09:49:11', version: '23.0.10' },
+          code: 200,
+        });
+
+      const health = await client.getHealth();
+      assert.equal(health.ok, true);
+      assert.equal(health.status, 'ok');
+      assert.equal(health.version, '23.0.10');
+      assert.equal(health.httpStatus, 200);
+    });
+
+    it('returns ok:false for a non-ok status without throwing', async () => {
+      nock(BASE_URL)
+        .get('/api/health')
+        .reply(200, { success: true, object: { status: 'degraded', version: '23.0.10' } });
+
+      const health = await client.getHealth();
+      assert.equal(health.ok, false);
+      assert.equal(health.status, 'degraded');
+    });
+
+    it('returns ok:false and the HTTP status for a 5xx response without throwing', async () => {
+      nock(BASE_URL).get('/api/health').reply(503, { success: false });
+
+      const health = await client.getHealth();
+      assert.equal(health.ok, false);
+      assert.equal(health.httpStatus, 503);
+    });
+  });
+
   describe('Existing Methods - Regression Tests', () => {
     it('getSketch should still work with validation', async () => {
       const mockSketch = {

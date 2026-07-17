@@ -326,6 +326,29 @@ class OpenProcessingClient {
   }
 
   /**
+   * Check the OpenProcessing API health endpoint.
+   *
+   * Uses `validateStatus: () => true` so a non-2xx status (a down/degraded API)
+   * resolves rather than throws — callers inspect the returned status to decide
+   * how to report it.
+   *
+   * @returns {Promise<{ok: boolean, status: string|null, version: string|null, timestamp: string|null, httpStatus: number, raw: any}>}
+   */
+  async getHealth() {
+    const response = await this.client.get('/api/health', { validateStatus: () => true });
+    const object = response.data?.object || {};
+    const status = object.status ?? null;
+    return {
+      ok: response.status === 200 && response.data?.success === true && status === 'ok',
+      status,
+      version: object.version ?? null,
+      timestamp: object.timestamp ?? null,
+      httpStatus: response.status,
+      raw: response.data,
+    };
+  }
+
+  /**
    * Get popular tags
    * @param {Object} [options] - Tags options
    * @param {number} [options.limit] - Maximum number of results
