@@ -16,8 +16,11 @@ const c = require('../colors');
 async function checkHealth(options = {}) {
   const client = new OpenProcessingClient(getToken(options.token));
   try {
-    const health = await client.getHealth();
-    return { ...health, reachable: true, error: null };
+    // Pick explicit fields rather than spreading — getHealth() also returns
+    // `raw` (the full API envelope, which includes the caller's account id),
+    // and we don't want that leaking into `--json` output.
+    const { ok, status, version, timestamp, httpStatus } = await client.getHealth();
+    return { ok, status, version, timestamp, httpStatus, reachable: true, error: null };
   } catch (error) {
     return {
       ok: false,
