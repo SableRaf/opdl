@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { generateIndexHtml, DEFAULT_STYLESHEET, P5_STYLESHEET } from '../../src/download/htmlGenerator';
+import { generateIndexHtml, DEFAULT_STYLESHEET, CENTERED_STYLESHEET } from '../../src/download/htmlGenerator';
 
 describe('htmlGenerator', () => {
   const testDir = path.join(__dirname, 'test-html-output');
@@ -231,17 +231,33 @@ describe('htmlGenerator', () => {
       generateIndexHtml(metadata, [], testDir);
 
       const css = fs.readFileSync(path.join(testDir, 'style.css'), 'utf8');
-      expect(css).toBe(P5_STYLESHEET);
+      expect(css).toBe(CENTERED_STYLESHEET);
       expect(css).toContain('display: flex;');
       expect(css).toContain('align-items: center;');
       expect(css).toContain('justify-content: center;');
       expect(css).toContain('background: #808080;');
     });
 
-    it('should write default (non-centering) style.css for non-p5js modes', () => {
+    it('should write centering grey style.css in processingjs mode', () => {
       const metadata = {
         engineURL: 'https://example.com/engine.js',
         mode: 'processingjs',
+      };
+
+      generateIndexHtml(metadata, [], testDir);
+
+      const css = fs.readFileSync(path.join(testDir, 'style.css'), 'utf8');
+      expect(css).toBe(CENTERED_STYLESHEET);
+      expect(css).toContain('display: flex;');
+      expect(css).toContain('align-items: center;');
+      expect(css).toContain('justify-content: center;');
+      expect(css).toContain('background: #808080;');
+    });
+
+    it('should write default (non-centering) style.css for other modes', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+        mode: 'html',
       };
 
       generateIndexHtml(metadata, [], testDir);
