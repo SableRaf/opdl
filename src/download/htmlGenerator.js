@@ -93,7 +93,8 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
 
   if (!hasExistingCss) {
     const stylesheetPath = path.join(outputDir, 'style.css');
-    const centeredModes = ['p5js', 'processingjs'];
+    // OpenProcessing reports Processing.js sketches as mode "pjs".
+    const centeredModes = ['p5js', 'pjs'];
     const stylesheet = centeredModes.includes(metadata.mode)
       ? CENTERED_STYLESHEET
       : DEFAULT_STYLESHEET;

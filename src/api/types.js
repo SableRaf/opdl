@@ -27,7 +27,7 @@
  * @property {number} isTemplate - Template flag (0 = not template, 1 = template)
  * @property {number} hasTimeline - Timeline feature flag (0 = no timeline, 1 = has timeline)
  * @property {number} userID - ID of sketch creator
- * @property {string} mode - Sketch mode: "p5js", "processingjs", "html", or "applet"
+ * @property {string} mode - Sketch mode: "p5js", "pjs", "html", or "applet"
  * @property {Library[]} libraries - Array of Library objects
  * @property {number|null} templateID - Template ID if based on template, null otherwise
  */
@@ -86,7 +86,7 @@
  * @property {string} description - Sketch description
  * @property {string|null} instructions - User instructions for interacting with the sketch
  * @property {string} createdOn - MySQL datetime timestamp (YYYY-MM-DD HH:MM:SS)
- * @property {string} mode - Sketch mode: "p5js", "processingjs", "html", or "applet"
+ * @property {string} mode - Sketch mode: "p5js", "pjs", "html", or "applet"
  */
 
 /**
@@ -109,7 +109,7 @@
  * @typedef {Object} UserHeartItem
  * @property {number} visualID - Sketch ID
  * @property {string} title - Sketch title
- * @property {string} mode - Sketch mode ("p5js", "processingjs", "html", "applet")
+ * @property {string} mode - Sketch mode ("p5js", "pjs", "html", "applet")
  */
 
 /**
@@ -146,7 +146,7 @@
  * @property {number|null} parentID - Parent sketch ID if fork, null if original
  * @property {string} thumbnailUpdatedOn - MySQL datetime timestamp (YYYY-MM-DD HH:MM:SS)
  * @property {string|null} videoUpdatedOn - Video update timestamp, null if no video
- * @property {string} mode - Sketch mode ("p5js", "processingjs", "html", "applet")
+ * @property {string} mode - Sketch mode ("p5js", "pjs", "html", "applet")
  * @property {string} createdOn - MySQL datetime timestamp (YYYY-MM-DD HH:MM:SS)
  * @property {number} userID - Sketch creator user ID
  * @property {string} fullname - Sketch creator display name

@@ -3,6 +3,7 @@ const path = require('path');
 const opdl = require('../index');
 const { sanitizeFilename } = require('../utils');
 const { scaffoldGalleryProject } = require('./galleryScaffolder');
+const { filterSketches } = require('./sketchFilter');
 const { promptConflictAction } = require('./conflictPrompt');
 const { promptFilenameConflictAction } = require('./filenameConflictPrompt');
 
@@ -60,7 +61,16 @@ async function downloadCuration({
   const listed = await client.getCurationSketches(curationId, {
     limit, offset: options.offset, sort: options.sort,
   });
-  const sketches = (Array.isArray(listed) ? listed : []).slice(0, limit);
+  const paged = (Array.isArray(listed) ? listed : []).slice(0, limit);
+  // Client-side filters run on the fetched page (they don't fetch more pages to
+  // fill a --limit). Non-matching sketches are dropped before any download.
+  const sketches = filterSketches(paged, { mode: options.mode });
+  if (options.mode && sketches.length === 0) {
+    if (!options.quiet) {
+      console.log(`opdl: No sketches in curation ${curationId} matched --mode=${options.mode}`);
+    }
+    return { success: false, empty: true, outputPath: null, manifest: [], failedSketches: [], skippedSketches: [] };
+  }
   const root = path.resolve(options.outputDir || `curation_${curationId}`);
   const sketchesRoot = path.join(root, 'public', 'sketches');
   fs.mkdirSync(sketchesRoot, { recursive: true });

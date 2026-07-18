@@ -29,6 +29,50 @@ describe('downloadCuration', () => {
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 
+  it('downloads only sketches matching --mode', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      const client = {
+        getCuration: vi.fn().mockResolvedValue({ title: 'Collection' }),
+        getCurationSketches: vi.fn().mockResolvedValue([
+          { visualID: 1, title: 'A', mode: 'p5js' },
+          { visualID: 2, title: 'B', mode: 'pjs' },
+          { visualID: 3, title: 'C', mode: 'p5js' },
+        ]),
+      };
+      const opdlFn = vi.fn(async (id) => ({ success: true, sketchInfo: { visualID: id, title: `S${id}` } }));
+      const result = await downloadCuration({
+        curationId: 9, client, opdlFn, scaffoldFn: vi.fn(),
+        options: { outputDir: root, mode: 'pjs', quiet: true },
+      });
+      expect(opdlFn).toHaveBeenCalledTimes(1);
+      expect(opdlFn.mock.calls[0][0]).toBe(2);
+      expect(result.manifest).toHaveLength(1);
+      expect(result.manifest[0].id).toBe(2);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('returns an empty result without scaffolding when --mode matches nothing', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      const client = {
+        getCuration: vi.fn().mockResolvedValue({ title: 'Collection' }),
+        getCurationSketches: vi.fn().mockResolvedValue([{ visualID: 1, title: 'A', mode: 'p5js' }]),
+      };
+      const opdlFn = vi.fn();
+      const scaffoldFn = vi.fn();
+      const result = await downloadCuration({
+        curationId: 9, client, opdlFn, scaffoldFn,
+        options: { outputDir: root, mode: 'applet', quiet: true },
+      });
+      expect(result.empty).toBe(true);
+      expect(result.success).toBe(false);
+      expect(opdlFn).not.toHaveBeenCalled();
+      expect(scaffoldFn).not.toHaveBeenCalled();
+      expect(fs.existsSync(path.join(root, 'public', 'manifest.json'))).toBe(false);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
   const seedExistingSketch = (root, dir, meta) => {
     const sketchDir = path.join(root, 'public', 'sketches', dir);
     fs.mkdirSync(path.join(sketchDir, 'metadata'), { recursive: true });

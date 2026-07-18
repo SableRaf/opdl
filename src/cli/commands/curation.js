@@ -68,6 +68,10 @@ async function handleCurationCommand(args) {
       if (!args.options.quiet) console.log('Curation download cancelled.');
       return;
     }
+    if (result.empty) {
+      // downloadCuration already reported which filter matched nothing.
+      return;
+    }
     if (!args.options.quiet && !args.options.run) {
       console.log(`Curation gallery downloaded to: ${result.outputPath}`);
     }

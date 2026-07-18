@@ -238,10 +238,10 @@ describe('htmlGenerator', () => {
       expect(css).toContain('background: #808080;');
     });
 
-    it('should write centering grey style.css in processingjs mode', () => {
+    it('should write centering grey style.css in pjs (Processing.js) mode', () => {
       const metadata = {
         engineURL: 'https://example.com/engine.js',
-        mode: 'processingjs',
+        mode: 'pjs',
       };
 
       generateIndexHtml(metadata, [], testDir);
