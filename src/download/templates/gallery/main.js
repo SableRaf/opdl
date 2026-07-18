@@ -12,7 +12,31 @@ const [configText, manifestResponse] = await Promise.all([
 ]);
 const config = yaml.load(configText) || {};
 const manifest = await manifestResponse.json();
+
+// The manifest stores each sketch's folder name in NFC, but macOS filesystems
+// store it in NFD (accented letters split into base + combining mark). Vite and
+// most static servers match request paths byte-for-byte, so a mismatched form
+// 404s — and Vite's SPA fallback returns index.html with a 200, which then blows
+// up as "Unexpected token '<'" when we try to parse it as JSON. Probe both forms
+// against metadata.json and cache whichever the filesystem actually uses.
+async function resolveDir(dir) {
+  for (const form of ["NFC", "NFD"]) {
+    const candidate = dir.normalize(form);
+    try {
+      const response = await fetch(
+        `./sketches/${encodeURIComponent(candidate)}/metadata/metadata.json`,
+        { method: "HEAD" },
+      );
+      // A real file returns JSON; the SPA fallback returns text/html.
+      const type = response.headers.get("content-type") || "";
+      if (response.ok && !type.includes("text/html")) return candidate;
+    } catch {}
+  }
+  return dir; // Give up gracefully; downstream fetches will surface the error.
+}
+
 const projects = await Promise.all((manifest.sketches || []).map(async (item) => {
+  item = { ...item, dir: await resolveDir(item.dir) };
   let metadata = {};
   try {
     const response = await fetch(`./sketches/${encodeURIComponent(item.dir)}/metadata/metadata.json`);
