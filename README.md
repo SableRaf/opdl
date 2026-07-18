@@ -143,4 +143,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to the pro
 
 ## Acknowledgements
 
-This project is not affiliated with [OpenProcessing](https://openprocessing.org/), and is not officially supported. Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api, making this project possible. Thanks to the Processing community for sharing their creative work for others to learn from and enjoy.s
+This project is not affiliated with [OpenProcessing](https://openprocessing.org/), and is not officially supported. Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api, making this project possible. Thanks to the Processing community for sharing their creative work for others to learn from and enjoy.

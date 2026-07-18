@@ -315,6 +315,39 @@ describe('downloader', () => {
         expect(called).toBe(false);
         expect(fs.existsSync(path.join(result.sketchDir, 'data.json'))).toBe(true);
       });
+
+      it('rewrites code references to the collision-renamed asset (keep-both)', async () => {
+        // A code object named data.json and an uploaded asset data.json that
+        // the sketch code references: keep-both renames the asset to
+        // data_2.json, and the code reference must follow it — not keep
+        // pointing at data.json (which is now the code object, not the asset).
+        nock('https://example.com').get('/assets/data.json').reply(200, 'ASSET_BYTES');
+
+        const sketchInfo = {
+          sketchId: 12345,
+          title: 'Test',
+          author: 'Author',
+          codeParts: [
+            { title: 'sketch.js', code: 'loadJSON("data.json");' },
+            { title: 'data.json', code: '{"fromCodeObject":true}' },
+          ],
+          files: [{ name: 'data.json' }],
+          metadata: { mode: 'p5js', fileBase: 'https://example.com/assets' },
+        };
+
+        const result = await downloadSketch(sketchInfo, {
+          ...baseOptions,
+          onFilenameConflict: async () => 'keep-both',
+        });
+
+        // Asset landed under the deduped name; code object kept data.json.
+        expect(fs.readFileSync(path.join(result.sketchDir, 'data_2.json'), 'utf8')).toBe('ASSET_BYTES');
+        expect(fs.readFileSync(path.join(result.sketchDir, 'data.json'), 'utf8')).toBe('{"fromCodeObject":true}');
+        // The code reference points at the renamed asset, not the pre-collision name.
+        const js = fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8');
+        expect(js).toContain('loadJSON("data_2.json");');
+        expect(js).not.toContain('loadJSON("data.json");');
+      });
     });
 
     it('should skip assets when downloadAssets is false', async () => {
@@ -835,6 +868,35 @@ describe('downloader', () => {
 
       expect(result.sketchName).toBe('sketch');
       expect(fs.existsSync(path.join(result.sketchDir, 'sketch.pde'))).toBe(true);
+    });
+
+    it('does not let a dot-segment title ("..") escape the nested sketch directory', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: '..', code: 'void setup() {}' }],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      // The sketch dir must stay nested — never collapse up to outputDir.
+      expect(result.sketchName).toBe('sketch');
+      expect(result.sketchDir).toBe(path.join(testDir, 'sketch', 'sketch'));
+      expect(path.resolve(result.sketchDir).startsWith(path.resolve(testDir, 'sketch') + path.sep)).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'sketch.pde'))).toBe(true);
+      // Bookkeeping must not be clobbered by code landing at outputDir.
+      expect(fs.existsSync(path.join(testDir, 'sketch.pde'))).toBe(false);
     });
 
     it('picks the main .pde when tab 0 is an explicit .js/index.html/.css', async () => {

@@ -24,11 +24,11 @@ const { buildCommentBlock, shouldAddAttribution } = require('./codeAttributor');
  */
 function resolveCodeFileName({
   title,
-  index,
+  index = 0,
   fallbackBase = 'part',
   defaultExtension = '.js',
   indexedFallback = true,
-}) {
+} = {}) {
   const raw = path.basename(title || '');
   const isBareExtension = raw.toLowerCase() === defaultExtension.toLowerCase();
   const originalExt = isBareExtension ? defaultExtension : path.extname(raw);
@@ -36,9 +36,16 @@ function resolveCodeFileName({
   const rawStem = isBareExtension ? '' : raw.slice(0, raw.length - originalExt.length);
   const fallbackStem = indexedFallback ? `${fallbackBase}_${index + 1}` : fallbackBase;
   const sanitized = sanitizeFilename(`${rawStem}${intendedExt}`);
-  const sanitizedStem = sanitized.toLowerCase().endsWith(intendedExt.toLowerCase())
+  let sanitizedStem = sanitized.toLowerCase().endsWith(intendedExt.toLowerCase())
     ? sanitized.slice(0, -intendedExt.length)
     : '';
+  // A stem of all dots (e.g. '.' or '..' — from a title like '..') is a
+  // relative-path segment, not a real name: joined into the sketch folder
+  // path it would collapse out of the directory (path.join(dir, '..') === the
+  // parent). Treat it as unusable so we fall back instead.
+  if (/^\.+$/.test(sanitizedStem)) {
+    sanitizedStem = '';
+  }
   return sanitizedStem ? sanitized : `${fallbackStem}${intendedExt}`;
 }
 

@@ -60,6 +60,23 @@ describe('resolveCodeFileName', () => {
     expect(a).toBe('foo.js');
     expect(b).toBe('foo.js');
   });
+
+  it('treats dot-segment titles (".." / ".") as unusable so the stem can never be a path segment', () => {
+    // A title of ".." would otherwise resolve to "...pde" with stem "..",
+    // which collapses out of the sketch directory when joined into a path.
+    for (const title of ['..', '.', '../..', './..']) {
+      const r = resolveCodeFileName({
+        title, index: 0, fallbackBase: 'sketch', defaultExtension: '.pde', indexedFallback: false,
+      });
+      expect(r).toBe('sketch.pde');
+    }
+  });
+
+  it('is callable with no arguments and with a missing index (genuine defaults)', () => {
+    expect(resolveCodeFileName()).toBe('part_1.js');
+    expect(resolveCodeFileName({})).toBe('part_1.js');
+    expect(resolveCodeFileName({ title: '' })).toBe('part_1.js');
+  });
 });
 
 describe('writeCodeFile', () => {
