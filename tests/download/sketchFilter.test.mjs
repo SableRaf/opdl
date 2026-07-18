@@ -53,6 +53,14 @@ describe('filterSketches', () => {
     expect(filterSketches(sketches, { mode: 'applet' })).toEqual([]);
   });
 
+  it('treats processingjs as an alias for pjs (and vice versa)', () => {
+    // user types the documented spelling, sketch carries the API spelling
+    expect(filterSketches(sketches, { mode: 'processingjs' }).map((s) => s.visualID)).toEqual([2]);
+    // and the reverse: sketch carries the documented spelling
+    const legacy = [{ visualID: 9, mode: 'processingjs' }];
+    expect(filterSketches(legacy, { mode: 'pjs' }).map((s) => s.visualID)).toEqual([9]);
+  });
+
   it('tolerates non-array input', () => {
     expect(filterSketches(null, { mode: 'p5js' })).toEqual([]);
   });

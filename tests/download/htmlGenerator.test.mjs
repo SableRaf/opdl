@@ -254,6 +254,18 @@ describe('htmlGenerator', () => {
       expect(css).toContain('background: #808080;');
     });
 
+    it('should treat legacy "processingjs" mode as pjs and center it', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+        mode: 'processingjs',
+      };
+
+      generateIndexHtml(metadata, [], testDir);
+
+      const css = fs.readFileSync(path.join(testDir, 'style.css'), 'utf8');
+      expect(css).toBe(CENTERED_STYLESHEET);
+    });
+
     it('should write default (non-centering) style.css for other modes', () => {
       const metadata = {
         engineURL: 'https://example.com/engine.js',

@@ -7,16 +7,20 @@
  * pages to "fill" a limit).
  */
 
+const { canonicalizeMode } = require('./sketchMode');
+
 /**
- * Normalize a --mode option into a lowercased list of mode names.
- * Accepts an array (already split) or a comma-separated string.
+ * Normalize a --mode option into a list of canonical mode names.
+ * Accepts an array (already split) or a comma-separated string. Aliases such as
+ * "processingjs" are mapped to their canonical form ("pjs") so user input and
+ * the API's mode value compare equal regardless of which spelling either uses.
  * @param {string|string[]|undefined} mode
- * @returns {string[]} lowercased, trimmed, non-empty mode names
+ * @returns {string[]} canonical, non-empty mode names
  */
 function normalizeModes(mode) {
   if (mode == null) return [];
   const list = Array.isArray(mode) ? mode : String(mode).split(',');
-  return list.map((m) => String(m).trim().toLowerCase()).filter(Boolean);
+  return list.map((m) => canonicalizeMode(m)).filter(Boolean);
 }
 
 /**
@@ -30,7 +34,7 @@ function filterSketches(sketches, criteria = {}) {
   const list = Array.isArray(sketches) ? sketches : [];
   const modes = normalizeModes(criteria.mode);
   if (modes.length === 0) return list;
-  return list.filter((sketch) => modes.includes(String(sketch.mode || '').toLowerCase()));
+  return list.filter((sketch) => modes.includes(canonicalizeMode(sketch.mode)));
 }
 
 module.exports = { filterSketches, normalizeModes };

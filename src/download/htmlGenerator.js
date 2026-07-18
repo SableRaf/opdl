@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { canonicalizeMode } = require('./sketchMode');
 
 const DEFAULT_STYLESHEET = `body {
   padding: 0;
@@ -93,9 +94,11 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
 
   if (!hasExistingCss) {
     const stylesheetPath = path.join(outputDir, 'style.css');
-    // OpenProcessing reports Processing.js sketches as mode "pjs".
+    // OpenProcessing reports Processing.js sketches as mode "pjs" (its docs say
+    // "processingjs"); canonicalizeMode collapses both so either triggers the
+    // centered layout.
     const centeredModes = ['p5js', 'pjs'];
-    const stylesheet = centeredModes.includes(metadata.mode)
+    const stylesheet = centeredModes.includes(canonicalizeMode(metadata.mode))
       ? CENTERED_STYLESHEET
       : DEFAULT_STYLESHEET;
     fs.writeFileSync(stylesheetPath, stylesheet, 'utf8');
