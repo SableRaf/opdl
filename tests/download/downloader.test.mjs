@@ -22,7 +22,7 @@ describe('downloader', () => {
   });
 
   describe('downloadSketch', () => {
-    it('should download sketch with code files', async () => {
+    it('should download sketch with code files under sketch/<name>/', async () => {
       const sketchInfo = {
         sketchId: 12345,
         title: 'Test Sketch',
@@ -49,11 +49,40 @@ describe('downloader', () => {
       });
 
       expect(result.outputDir).toBe(testDir);
-      expect(fs.existsSync(path.join(testDir, 'sketch.js'))).toBe(true);
-      expect(fs.existsSync(path.join(testDir, 'helpers.js'))).toBe(true);
+      expect(result.sketchName).toBe('sketch');
+      expect(result.sketchDir).toBe(path.join(testDir, 'sketch', 'sketch'));
+      expect(fs.existsSync(path.join(result.sketchDir, 'sketch.js'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'helpers.js'))).toBe(true);
 
-      const sketchContent = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
+      const sketchContent = fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8');
       expect(sketchContent).toBe('console.log("test");');
+    });
+
+    it('keeps metadata/, LICENSE, OPENPROCESSING.md at the top-level outputDir', async () => {
+      const sketchInfo = {
+        sketchId: 12345,
+        title: 'Test',
+        author: 'Author',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js', license: 'by' },
+      };
+
+      await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: true,
+        downloadThumbnail: false,
+        createLicenseFile: true,
+        createOpMetadata: true,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'metadata', 'metadata.json'))).toBe(true);
+      expect(fs.existsSync(path.join(testDir, 'LICENSE'))).toBe(true);
+      expect(fs.existsSync(path.join(testDir, 'OPENPROCESSING.md'))).toBe(true);
+      // Not duplicated inside sketch/
+      expect(fs.existsSync(path.join(testDir, 'sketch', 'sketch', 'LICENSE'))).toBe(false);
     });
 
     it('should add source comments when enabled', async () => {
@@ -71,7 +100,7 @@ describe('downloader', () => {
         isFork: false,
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         addSourceComments: true,
         downloadAssets: false,
@@ -81,7 +110,7 @@ describe('downloader', () => {
         createOpMetadata: false,
       });
 
-      const content = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
+      const content = fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8');
       expect(content).toContain('Downloaded with opdl');
       expect(content).toContain('Title: Test Sketch');
       expect(content).toContain('Author: Test Author');
@@ -101,7 +130,7 @@ describe('downloader', () => {
         isFork: false,
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         addSourceComments: true,
         downloadAssets: false,
@@ -111,7 +140,7 @@ describe('downloader', () => {
         createOpMetadata: false,
       });
 
-      const content = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
+      const content = fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8');
       const matches = content.match(/Downloaded with opdl/g);
       expect(matches).toHaveLength(1);
     });
@@ -129,7 +158,7 @@ describe('downloader', () => {
         metadata: {},
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -139,8 +168,8 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'mysketch.js'))).toBe(true);
-      expect(fs.existsSync(path.join(testDir, 'filename.js'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'mysketch.js'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'filename.js'))).toBe(true);
     });
 
     it('should add .js extension to files without extension', async () => {
@@ -155,7 +184,7 @@ describe('downloader', () => {
         metadata: {},
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -165,7 +194,8 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'mysketch.js'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'mysketch.js'))).toBe(true);
+      expect(result.sketchName).toBe('mysketch');
     });
 
     it('should download assets when enabled', async () => {
@@ -186,7 +216,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: true,
         saveMetadata: false,
@@ -196,7 +226,7 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'image.png'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'image.png'))).toBe(true);
     });
 
     describe('uploaded file vs code object name collision', () => {
@@ -228,14 +258,14 @@ describe('downloader', () => {
       it('keeps both by renaming the uploaded file (default)', async () => {
         nock('https://example.com').get('/assets/index.html').reply(200, uploadHtml);
 
-        await downloadSketch(makeSketchInfo(), {
+        const result = await downloadSketch(makeSketchInfo(), {
           ...baseOptions,
           onFilenameConflict: async () => 'keep-both',
         });
 
         // Code object keeps the canonical name; upload lands under index_2.html.
-        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(codeHtml);
-        expect(fs.readFileSync(path.join(testDir, 'index_2.html'), 'utf8')).toBe(uploadHtml);
+        expect(fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8')).toBe(codeHtml);
+        expect(fs.readFileSync(path.join(result.sketchDir, 'index_2.html'), 'utf8')).toBe(uploadHtml);
       });
 
       it('skips the uploaded file when asked', async () => {
@@ -243,13 +273,13 @@ describe('downloader', () => {
           .get('/assets/index.html')
           .reply(200, uploadHtml);
 
-        await downloadSketch(makeSketchInfo(), {
+        const result = await downloadSketch(makeSketchInfo(), {
           ...baseOptions,
           onFilenameConflict: async () => 'skip-upload',
         });
 
-        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(codeHtml);
-        expect(fs.existsSync(path.join(testDir, 'index_2.html'))).toBe(false);
+        expect(fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8')).toBe(codeHtml);
+        expect(fs.existsSync(path.join(result.sketchDir, 'index_2.html'))).toBe(false);
         // Skipped before fetching.
         expect(upload.isDone()).toBe(false);
         nock.cleanAll();
@@ -258,13 +288,13 @@ describe('downloader', () => {
       it('overwrites the code object when asked', async () => {
         nock('https://example.com').get('/assets/index.html').reply(200, uploadHtml);
 
-        await downloadSketch(makeSketchInfo(), {
+        const result = await downloadSketch(makeSketchInfo(), {
           ...baseOptions,
           onFilenameConflict: async () => 'overwrite-code',
         });
 
-        expect(fs.readFileSync(path.join(testDir, 'index.html'), 'utf8')).toBe(uploadHtml);
-        expect(fs.existsSync(path.join(testDir, 'index_2.html'))).toBe(false);
+        expect(fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8')).toBe(uploadHtml);
+        expect(fs.existsSync(path.join(result.sketchDir, 'index_2.html'))).toBe(false);
       });
 
       it('is not triggered when names do not collide', async () => {
@@ -274,7 +304,7 @@ describe('downloader', () => {
         const info = makeSketchInfo();
         info.files = [{ name: 'data.json' }];
 
-        await downloadSketch(info, {
+        const result = await downloadSketch(info, {
           ...baseOptions,
           onFilenameConflict: async () => {
             called = true;
@@ -283,7 +313,40 @@ describe('downloader', () => {
         });
 
         expect(called).toBe(false);
-        expect(fs.existsSync(path.join(testDir, 'data.json'))).toBe(true);
+        expect(fs.existsSync(path.join(result.sketchDir, 'data.json'))).toBe(true);
+      });
+
+      it('rewrites code references to the collision-renamed asset (keep-both)', async () => {
+        // A code object named data.json and an uploaded asset data.json that
+        // the sketch code references: keep-both renames the asset to
+        // data_2.json, and the code reference must follow it — not keep
+        // pointing at data.json (which is now the code object, not the asset).
+        nock('https://example.com').get('/assets/data.json').reply(200, 'ASSET_BYTES');
+
+        const sketchInfo = {
+          sketchId: 12345,
+          title: 'Test',
+          author: 'Author',
+          codeParts: [
+            { title: 'sketch.js', code: 'loadJSON("data.json");' },
+            { title: 'data.json', code: '{"fromCodeObject":true}' },
+          ],
+          files: [{ name: 'data.json' }],
+          metadata: { mode: 'p5js', fileBase: 'https://example.com/assets' },
+        };
+
+        const result = await downloadSketch(sketchInfo, {
+          ...baseOptions,
+          onFilenameConflict: async () => 'keep-both',
+        });
+
+        // Asset landed under the deduped name; code object kept data.json.
+        expect(fs.readFileSync(path.join(result.sketchDir, 'data_2.json'), 'utf8')).toBe('ASSET_BYTES');
+        expect(fs.readFileSync(path.join(result.sketchDir, 'data.json'), 'utf8')).toBe('{"fromCodeObject":true}');
+        // The code reference points at the renamed asset, not the pre-collision name.
+        const js = fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8');
+        expect(js).toContain('loadJSON("data_2.json");');
+        expect(js).not.toContain('loadJSON("data.json");');
       });
     });
 
@@ -301,7 +364,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -311,7 +374,7 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'image.png'))).toBe(false);
+      expect(fs.existsSync(path.join(result.sketchDir, 'image.png'))).toBe(false);
     });
 
     it('should save metadata when enabled', async () => {
@@ -392,7 +455,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -402,7 +465,7 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'index.html'))).toBe(true);
     });
 
     it('should not generate index.html for html mode sketches', async () => {
@@ -419,7 +482,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -429,9 +492,9 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      const indexFiles = fs.readdirSync(testDir).filter(f => f === 'index.html');
+      const indexFiles = fs.readdirSync(result.sketchDir).filter(f => f === 'index.html');
       expect(indexFiles.length).toBe(1);
-      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+      expect(fs.existsSync(path.join(result.sketchDir, 'style.css'))).toBe(false);
     });
 
     it('should not overwrite an existing index.html code part for non-html mode', async () => {
@@ -450,7 +513,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -460,9 +523,9 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+      const content = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
       expect(content).toBe(originalHtml);
-      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+      expect(fs.existsSync(path.join(result.sketchDir, 'style.css'))).toBe(false);
     });
 
     it('should not write default style.css when a user CSS code part exists', async () => {
@@ -481,7 +544,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -491,10 +554,10 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(true);
-      const themeContent = fs.readFileSync(path.join(testDir, 'theme.css'), 'utf8');
+      expect(fs.existsSync(path.join(result.sketchDir, 'index.html'))).toBe(true);
+      const themeContent = fs.readFileSync(path.join(result.sketchDir, 'theme.css'), 'utf8');
       expect(themeContent).toBe('body { color: red; }');
-      const html = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
       expect(html).toContain('href="theme.css"');
       expect(html).not.toContain('href="style.css"');
     });
@@ -514,7 +577,7 @@ describe('downloader', () => {
         },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -524,7 +587,7 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'style.css'))).toBe(true);
     });
 
     it('should create LICENSE file when enabled', async () => {
@@ -622,7 +685,7 @@ describe('downloader', () => {
         },
       };
 
-      await expect(downloadSketch(sketchInfo, {
+      const resultPromise = downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: true,
         quiet: true,
@@ -631,9 +694,11 @@ describe('downloader', () => {
         createLicenseFile: false,
         createOpMetadata: false,
         addSourceComments: false,
-      })).resolves.toBeDefined();
+      });
+      await expect(resultPromise).resolves.toBeDefined();
+      const result = await resultPromise;
 
-      expect(fs.existsSync(path.join(testDir, 'image.png'))).toBe(false);
+      expect(fs.existsSync(path.join(result.sketchDir, 'image.png'))).toBe(false);
     });
 
     it('should handle missing fileBase gracefully', async () => {
@@ -679,7 +744,7 @@ describe('downloader', () => {
         .get('/valid.png')
         .reply(200, Buffer.from('data'));
 
-      await expect(downloadSketch(sketchInfo, {
+      const resultPromise = downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: true,
         quiet: true,
@@ -688,9 +753,11 @@ describe('downloader', () => {
         createLicenseFile: false,
         createOpMetadata: false,
         addSourceComments: false,
-      })).resolves.toBeDefined();
+      });
+      await expect(resultPromise).resolves.toBeDefined();
+      const result = await resultPromise;
 
-      expect(fs.existsSync(path.join(testDir, 'valid.png'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'valid.png'))).toBe(true);
     });
   });
 
@@ -708,7 +775,7 @@ describe('downloader', () => {
         metadata: { mode: 'p5js' },
       };
 
-      await downloadSketch(sketchInfo, {
+      const result = await downloadSketch(sketchInfo, {
         outputDir: testDir,
         downloadAssets: false,
         saveMetadata: false,
@@ -718,8 +785,257 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
-      expect(fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8')).toBe('one');
-      expect(fs.readFileSync(path.join(testDir, 'sketch_2.js'), 'utf8')).toBe('two');
+      expect(fs.readFileSync(path.join(result.sketchDir, 'sketch.js'), 'utf8')).toBe('one');
+      expect(fs.readFileSync(path.join(result.sketchDir, 'sketch_2.js'), 'utf8')).toBe('two');
+    });
+  });
+
+  describe('pjs sketches', () => {
+    it('writes .pde tabs, names the folder after the main .pde, no sketch.properties', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [
+          { title: 'MySketch', code: 'void setup() {}' },
+        ],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result.sketchName).toBe('MySketch');
+      expect(result.sketchDir).toBe(path.join(testDir, 'sketch', 'MySketch'));
+      expect(fs.existsSync(path.join(result.sketchDir, 'MySketch.pde'))).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'sketch.properties'))).toBe(false);
+
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
+      expect(html).toContain('data-processing-sources="MySketch.pde"');
+      expect(html).not.toContain('<script src="MySketch.pde">');
+    });
+
+    it('accepts the processingjs alias identically to pjs', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'Main', code: 'void setup() {}' }],
+        files: [],
+        metadata: { mode: 'processingjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(fs.existsSync(path.join(result.sketchDir, 'Main.pde'))).toBe(true);
+    });
+
+    it('falls back to sketch.pde when the title sanitizes to nothing', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: '***', code: 'void setup() {}' }],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result.sketchName).toBe('sketch');
+      expect(fs.existsSync(path.join(result.sketchDir, 'sketch.pde'))).toBe(true);
+    });
+
+    it('does not let a dot-segment title ("..") escape the nested sketch directory', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: '..', code: 'void setup() {}' }],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      // The sketch dir must stay nested — never collapse up to outputDir.
+      expect(result.sketchName).toBe('sketch');
+      expect(result.sketchDir).toBe(path.join(testDir, 'sketch', 'sketch'));
+      expect(path.resolve(result.sketchDir).startsWith(path.resolve(testDir, 'sketch') + path.sep)).toBe(true);
+      expect(fs.existsSync(path.join(result.sketchDir, 'sketch.pde'))).toBe(true);
+      // Bookkeeping must not be clobbered by code landing at outputDir.
+      expect(fs.existsSync(path.join(testDir, 'sketch.pde'))).toBe(false);
+    });
+
+    it('picks the main .pde when tab 0 is an explicit .js/index.html/.css', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [
+          { title: 'helper.js', code: 'x' },
+          { title: 'Main', code: 'void setup() {}' },
+        ],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result.sketchName).toBe('Main');
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
+      expect(html).toContain('<script src="helper.js"></script>');
+      expect(html).toContain('data-processing-sources="Main.pde"');
+    });
+
+    it('lists all .pde files in tab order on the canvas', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [
+          { title: 'a', code: 'void setup() {}' },
+          { title: 'b', code: 'void draw() {}' },
+        ],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
+      expect(html).toContain('data-processing-sources="a.pde b.pde"');
+    });
+
+    it('falls back to plain <script src> wiring with a warning when there are no .pde tabs', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result.sketchName).toBe('sketch');
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
+      expect(html).toContain('<script src="sketch.js"></script>');
+      expect(html).not.toContain('data-processing-sources');
+    });
+
+    it('adds .pde attribution comments (C-style)', async () => {
+      const sketchInfo = {
+        sketchId: 42,
+        title: 'Test Sketch',
+        author: 'Author',
+        codeParts: [{ title: 'Main', code: 'void setup() {}' }],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: true,
+      });
+
+      const content = fs.readFileSync(path.join(result.sketchDir, 'Main.pde'), 'utf8');
+      expect(content).toContain('/*');
+      expect(content).toContain('Downloaded with opdl');
+    });
+  });
+
+  describe('prepass collision handling', () => {
+    it('two tabs resolving to the same pde name dedupe consistently between the predicted list and disk', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [
+          { title: 'Main', code: 'void setup() {}' },
+          { title: 'Main', code: 'void draw() {}' },
+        ],
+        files: [],
+        metadata: { mode: 'pjs', engineURL: 'https://example.com/processing.js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result.sketchName).toBe('Main');
+      expect(fs.readFileSync(path.join(result.sketchDir, 'Main.pde'), 'utf8')).toContain('setup');
+      expect(fs.readFileSync(path.join(result.sketchDir, 'Main_2.pde'), 'utf8')).toContain('draw');
+      const html = fs.readFileSync(path.join(result.sketchDir, 'index.html'), 'utf8');
+      expect(html).toContain('data-processing-sources="Main.pde Main_2.pde"');
     });
   });
 
@@ -753,6 +1069,7 @@ describe('downloader', () => {
         addSourceComments: false,
       });
 
+      // Tutorial bundle keeps its current layout at outputDir, out of scope for nesting.
       expect(fs.existsSync(path.join(testDir, 'tutorial/page_1/README.md'))).toBe(true);
       expect(fs.readFileSync(path.join(testDir, 'tutorial/page_1/mySketch.js'), 'utf8')).toBe('page code');
     });
@@ -778,6 +1095,37 @@ describe('downloader', () => {
       });
 
       expect(fs.existsSync(path.join(testDir, 'tutorial'))).toBe(false);
+    });
+  });
+
+  describe('return contract', () => {
+    it('returns { outputDir, metadataDir, sketchDir, sketchName, codeFiles }', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+      });
+
+      expect(result).toMatchObject({
+        outputDir: testDir,
+        metadataDir: path.join(testDir, 'metadata'),
+        sketchDir: path.join(testDir, 'sketch', 'sketch'),
+        sketchName: 'sketch',
+      });
+      expect(Array.isArray(result.codeFiles)).toBe(true);
     });
   });
 });

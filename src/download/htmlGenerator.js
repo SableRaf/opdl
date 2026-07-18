@@ -55,18 +55,6 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
     .join('\n    ');
   const librariesSection = libraries ? `    ${libraries}\n` : '';
 
-  const scriptTags = parts
-    .filter((part) => part.title && part.title.endsWith('.js'))
-    .map((part) => `<script src="${part.title}"></script>`)
-    .join('\n    ');
-  const scriptTagsSection = scriptTags ? `    ${scriptTags}\n` : '';
-
-  const scriptTagsDefault = parts
-    .filter((part) => part.title && !part.title.includes('.'))
-    .map((part) => `<script src="${part.title}.js"></script>`)
-    .join('\n    ');
-  const scriptTagsDefaultSection = scriptTagsDefault ? `    ${scriptTagsDefault}\n` : '';
-
   const cssLinkTags = parts
     .filter((part) => part.title && part.title.endsWith('.css'))
     .map((part) => `<link rel="stylesheet" type="text/css" href="${part.title}">`)
@@ -77,10 +65,50 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
     ? ''
     : `    <link rel="stylesheet" type="text/css" href="style.css">\n`;
 
+  const isPjs = canonicalizeMode(metadata.mode) === 'pjs';
+  const pdeParts = isPjs
+    ? parts.filter((part) => part.title && part.title.toLowerCase().endsWith('.pde'))
+    : [];
+
+  let scriptTagsSection;
+  let scriptTagsDefaultSection;
+  let bodyContent;
+
+  if (isPjs && pdeParts.length) {
+    // pjs with .pde tabs: Processing.js concatenates all .pde sources listed
+    // on a canvas's data-processing-sources; explicit .js helper tabs stay
+    // plain scripts. No sketch.properties, no inline text/processing (avoids
+    // </script> corruption).
+    const pdeSources = pdeParts.map((part) => part.title).join(' ');
+    const jsHelperTags = parts
+      .filter((part) => part.title && part.title.toLowerCase().endsWith('.js'))
+      .map((part) => `<script src="${part.title}"></script>`)
+      .join('\n    ');
+    scriptTagsSection = jsHelperTags ? `    ${jsHelperTags}\n` : '';
+    scriptTagsDefaultSection = '';
+    bodyContent = `<canvas data-processing-sources="${pdeSources}"></canvas>\n`;
+  } else {
+    if (isPjs && !metadata.__silencePjsFallbackWarning) {
+      console.warn('opdl: pjs sketch has no .pde files; falling back to <script src> wiring');
+    }
+    const scriptTags = parts
+      .filter((part) => part.title && part.title.endsWith('.js'))
+      .map((part) => `<script src="${part.title}"></script>`)
+      .join('\n    ');
+    scriptTagsSection = scriptTags ? `    ${scriptTags}\n` : '';
+
+    const scriptTagsDefault = parts
+      .filter((part) => part.title && !part.title.includes('.'))
+      .map((part) => `<script src="${part.title}.js"></script>`)
+      .join('\n    ');
+    scriptTagsDefaultSection = scriptTagsDefault ? `    ${scriptTagsDefault}\n` : '';
+    bodyContent = '';
+  }
+
   const htmlContent = `${htmlHeadStart}${librariesSection}${scriptTagsSection}${scriptTagsDefaultSection}${cssLinkTagsSection}${defaultCssLinkSection}</head>
 
 <body>
-
+${bodyContent}
 </body>
 
 </html>`;

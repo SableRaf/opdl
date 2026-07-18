@@ -346,7 +346,7 @@ npm install && npm run dev
 
 Downloads each available sketch for offline use and creates a Vite gallery with grid and slideshow views. Edit `public/gallery.yaml` for global playback timing. Titles and authors are read from each sketch's `metadata/metadata.json`, where optional `titleOverride` and `authorOverride` properties may also be added. `--max` is an alias for `--limit`.
 
-Use `--mode` to download only sketches of a given mode, e.g. `--mode pjs` (Processing.js) or `--mode p5js,pjs` (comma-separated, case-insensitive). `processingjs` is accepted as an alias for `pjs`. The filter is applied to the sketches returned by `--limit`/`--offset`, so it does not fetch extra pages to reach a limit. If no sketch matches, nothing is downloaded and no gallery is created.
+Use `--mode` to download only sketches of a given mode, e.g. `--mode pjs` (Processing.js) or `--mode p5js,pjs` (comma-separated, case-insensitive). `processingjs` is accepted as an alias for `pjs`. The filter is applied to the sketches returned by `--limit`/`--offset`, so it does not fetch extra pages to reach a limit. If no sketch matches, nothing is downloaded and no gallery is created. Each sketch (including `pjs` ones) is downloaded under its own nested `sketch/<name>/` folder, same as a standalone download; the gallery links to it automatically.
 
 If a sketch folder already exists, opdl asks whether to skip it (the default), overwrite it, apply either choice to all remaining existing sketches, or cancel the download. Skipped sketches keep their local files (including any metadata overrides) and stay in the gallery. Use `--overwrite` or `--skipExisting` to set the policy up front without prompting; non-interactive sessions (piped output, CI, or `--quiet`) skip existing sketches by default.
 
@@ -462,7 +462,19 @@ Options specific to sketch download operations.
 
 #### `--outputDir <path>`
 
-Specify the output directory for downloaded files. Defaults to current directory.
+Specify the output directory for downloaded files. Defaults to `sketch_<id>` in the current directory.
+
+Inside that directory, the runnable sketch (code, `index.html`, assets) is nested under `sketch/<name>/`, separate from opdl's bookkeeping (`metadata/`, `LICENSE`, `OPENPROCESSING.md`), which stays at the top level:
+
+```
+<outputDir>/
+├── sketch/<name>/     # code, index.html, style.css, assets
+├── metadata/
+├── LICENSE
+└── OPENPROCESSING.md
+```
+
+`<name>` is derived from the sketch's main code file — for `pjs` (Processing.js) sketches, that's the main `.pde` file, so `sketch/<name>/` also opens natively in the Processing PDE.
 
 **Examples:**
 ```bash
@@ -499,15 +511,17 @@ opdl 1142958 --skipAssets
 
 #### `--vite`
 
-Set up a Vite project structure for modern web development.
+Set up a Vite project structure for modern web development, scaffolded inside `sketch/<name>/`.
 
-This will:
+For p5.js and plain HTML/JS sketches, this will:
 - Create a `package.json` with Vite as a dependency
 - Create a `vite.config.js` configuration file
 - Move code files to a `src/` directory
 - Move assets to a `public/` directory
 - Update `index.html` to work with Vite's module system
 - Install dependencies automatically (unless `--quiet` is set)
+
+For `pjs` (Processing.js) sketches, nothing moves: the `.pde` files, any `.js` helpers, CSS, and downloaded assets all stay at the project root so the same folder keeps opening in the Processing PDE. `index.html` is left untouched (Vite serves it as-is in dev); at build time a generated `vite.config.js` plugin copies exactly the files opdl downloaded — never "everything in the directory" — into `dist/`, so stray files (e.g. a `.env` you dropped in later) are never published.
 
 **Requirements:**
 - Node.js 20 or higher (required by Vite 6)
@@ -518,7 +532,7 @@ opdl 1142958 --vite
 opdl sketch download 1142958 --vite --outputDir ./projects
 ```
 
-After setup, run `npm run dev` in the sketch directory to start the development server.
+After setup, `opdl` prints the exact command to run, e.g. `cd 'sketch_1142958/sketch/MySketch' && npm run dev`.
 
 #### `--run`
 
@@ -611,8 +625,9 @@ opdl 1142958 --vite --quiet
 # Download with Vite and automatically start dev server
 opdl 1142958 --vite --run
 
-# After download (without --run), start development server manually
-cd sketch_1142958
+# After download (without --run), start the development server manually
+# using the exact command opdl printed, e.g.:
+cd sketch_1142958/sketch/MySketch
 npm run dev
 
 # Build for production
@@ -891,6 +906,10 @@ const opdl = require('opdl');
 
   if (result.success) {
     console.log(`Downloaded: ${result.sketchInfo.title}`);
+    // result.sketchPath is the nested sketch/<name>/ folder containing the
+    // runnable sketch (code, index.html, assets); result.outputPath is the
+    // top-level folder that also holds metadata/, LICENSE, OPENPROCESSING.md.
+    console.log(`Sketch files: ${result.sketchPath}`);
   } else {
     console.error(`Error: ${result.sketchInfo.error}`);
   }
