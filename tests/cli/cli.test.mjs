@@ -274,6 +274,11 @@ describe('CLI Parser', () => {
       expect(options.sort).toBe('asc');
     });
 
+    it('should parse the --mode filter with = and space syntax', () => {
+      expect(parseOptions(['--mode=pjs']).mode).toBe('pjs');
+      expect(parseOptions(['--mode', 'p5js,pjs']).mode).toBe('p5js,pjs');
+    });
+
     it('should handle mixed boolean and value flags', () => {
       const options = parseOptions(['--json', '--info=all', '--quiet', '--limit=5']);
       expect(options.json).toBe(true);

@@ -238,10 +238,10 @@ describe('htmlGenerator', () => {
       expect(css).toContain('background: #808080;');
     });
 
-    it('should write centering grey style.css in processingjs mode', () => {
+    it('should write centering grey style.css in pjs (Processing.js) mode', () => {
       const metadata = {
         engineURL: 'https://example.com/engine.js',
-        mode: 'processingjs',
+        mode: 'pjs',
       };
 
       generateIndexHtml(metadata, [], testDir);
@@ -252,6 +252,18 @@ describe('htmlGenerator', () => {
       expect(css).toContain('align-items: center;');
       expect(css).toContain('justify-content: center;');
       expect(css).toContain('background: #808080;');
+    });
+
+    it('should treat legacy "processingjs" mode as pjs and center it', () => {
+      const metadata = {
+        engineURL: 'https://example.com/engine.js',
+        mode: 'processingjs',
+      };
+
+      generateIndexHtml(metadata, [], testDir);
+
+      const css = fs.readFileSync(path.join(testDir, 'style.css'), 'utf8');
+      expect(css).toBe(CENTERED_STYLESHEET);
     });
 
     it('should write default (non-centering) style.css for other modes', () => {

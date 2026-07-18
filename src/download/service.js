@@ -19,7 +19,7 @@ const {
  * @property {Array} codeParts - Array of code files
  * @property {Array} files - Array of uploaded files/assets
  * @property {Array} libraries - Array of libraries used
- * @property {string} mode - Sketch mode (p5js, processingjs, html, applet)
+ * @property {string} mode - Sketch mode (p5js, pjs [alias: processingjs], html, applet)
  * @property {boolean} available - Whether sketch is available for download
  * @property {string|null} unavailableReason - Reason if unavailable
  * @property {string} error - Deprecated error field (kept for compatibility)

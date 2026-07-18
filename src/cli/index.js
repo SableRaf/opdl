@@ -17,6 +17,7 @@
  * @property {number} [options.limit] - Limit number of results
  * @property {number} [options.offset] - Skip first n results
  * @property {'asc'|'desc'} [options.sort] - Sort order
+ * @property {string} [options.mode] - Filter curation download by sketch mode(s), comma-separated (e.g. "pjs" or "p5js,pjs")
  * @property {boolean} [options.downloadThumbnail] - Download thumbnail
  * @property {boolean} [options.saveMetadata] - Save metadata file
  * @property {boolean} [options.downloadAssets] - Download assets
@@ -197,6 +198,8 @@ function parseOptions(args) {
       options.offset = parseInt(arg.split('=')[1], 10);
     } else if (arg.startsWith('--sort=')) {
       options.sort = arg.split('=')[1];
+    } else if (arg.startsWith('--mode=')) {
+      options.mode = arg.split('=')[1];
     }
     // Value flags with space syntax
     else if (arg === '--token') {
@@ -211,6 +214,8 @@ function parseOptions(args) {
       options.offset = parseInt(args[++i], 10);
     } else if (arg === '--sort') {
       options.sort = args[++i];
+    } else if (arg === '--mode') {
+      options.mode = args[++i];
     }
   }
 
