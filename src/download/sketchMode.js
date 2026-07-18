@@ -1,11 +1,13 @@
 /**
  * Sketch mode names and their aliases.
  *
- * OpenProcessing's API returns `pjs` for Processing.js sketches, but its own
- * documentation lists the value as `processingjs`, and the wire value has
- * changed before. To stay robust to either, we canonicalize both to `pjs`
- * before any mode comparison. Add future aliases here so every mode check
- * (filters, CSS gating, etc.) stays consistent.
+ * OpenProcessing represents Processing.js sketches as either `pjs` or
+ * `processingjs` depending on the endpoint/version: the API has been observed
+ * returning `pjs`, while its own documentation (and some responses/mocks) list
+ * `processingjs`, and the wire value has changed before. To stay robust to
+ * either spelling, we canonicalize both to `pjs` before any mode comparison.
+ * Add future aliases here so every mode check (filters, CSS gating, etc.) stays
+ * consistent.
  */
 
 // alias -> canonical mode name

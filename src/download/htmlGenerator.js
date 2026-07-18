@@ -94,9 +94,9 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
 
   if (!hasExistingCss) {
     const stylesheetPath = path.join(outputDir, 'style.css');
-    // OpenProcessing reports Processing.js sketches as mode "pjs" (its docs say
-    // "processingjs"); canonicalizeMode collapses both so either triggers the
-    // centered layout.
+    // Processing.js sketches may report their mode as "pjs" or "processingjs"
+    // depending on the endpoint/version; canonicalizeMode collapses both to
+    // "pjs" so either triggers the centered layout.
     const centeredModes = ['p5js', 'pjs'];
     const stylesheet = centeredModes.includes(canonicalizeMode(metadata.mode))
       ? CENTERED_STYLESHEET

@@ -753,7 +753,7 @@ When using `opdl sketch info <sketchId>` or `opdl <sketchId> --info`:
 - `libraries` - Libraries used (p5.js, p5.sound, etc.)
 - `createdOn` - Creation date
 - `updatedOn` - Last modification date
-- `mode` - Sketch mode (p5js, pjs, html, applet)
+- `mode` - Sketch mode (p5js, pjs [alias: processingjs], html, applet)
 - `userID` - Author's user ID
 - `parentID` - Parent sketch ID (if forked)
 - `isDraft` - Whether sketch is a draft
