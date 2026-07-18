@@ -23,14 +23,40 @@ const sanitizeFilename = (filename) => {
 };
 
 /**
+ * Resolve the on-disk filename for an asset, guaranteeing a sanitization-stable
+ * result (never the raw original as a fallback, which could carry unsafe
+ * characters like quotes/backticks onto disk).
+ *
+ * @param {string} originalName - Asset name as reported by the API.
+ * @param {number} index - Zero-based index for the deterministic fallback.
+ * @returns {string}
+ */
+const resolveAssetFileName = (originalName, index) => {
+  const sanitized = sanitizeFilename(originalName || '');
+  // A sanitized result that is a bare extension (e.g. '.png', from an
+  // original like '???.png') has no usable stem and would land on disk as a
+  // hidden dotfile, not a real asset name — reject it like an empty result.
+  const sanitizedExt = path.extname(sanitized);
+  const isBareExtension = !sanitizedExt && sanitized.startsWith('.');
+  if (sanitized && !isBareExtension && sanitizeFilename(sanitized) === sanitized) {
+    return sanitized;
+  }
+  const rawExt = path.extname(path.basename(originalName || ''));
+  const sanitizedRawExt = sanitizeFilename(rawExt);
+  const ext = sanitizedRawExt && sanitizeFilename(sanitizedRawExt) === sanitizedRawExt ? sanitizedRawExt : '';
+  return `asset_${index + 1}${ext}`;
+};
+
+/**
  * Build the list of asset filename rewrites the download performs.
  *
- * Asset files are saved under `sanitizeFilename(name)` (see downloader.js), which
- * turns e.g. "Bottle slide.m4a" into "Bottle_slide.m4a". The sketch code still
- * references the original name, so without rewriting, the request 404s and the
- * dev server's HTML fallback reaches loadSound/loadImage — surfacing as an
- * opaque "Unable to decode audio data" EncodingError. Returns only the entries
- * whose on-disk name differs from the original.
+ * Asset files are saved under `resolveAssetFileName(name, index)` (see
+ * downloader.js), which turns e.g. "Bottle slide.m4a" into
+ * "Bottle_slide.m4a". The sketch code still references the original name, so
+ * without rewriting, the request 404s and the dev server's HTML fallback
+ * reaches loadSound/loadImage — surfacing as an opaque "Unable to decode
+ * audio data" EncodingError. Returns only the entries whose on-disk name
+ * differs from the original.
  *
  * @param {Array<{name?: string}>} files - Asset entries from the API.
  * @returns {Array<{original: string, sanitized: string}>}
@@ -40,17 +66,17 @@ const buildAssetRenameMap = (files) => {
   if (!Array.isArray(files)) {
     return renames;
   }
-  for (const file of files) {
+  files.forEach((file, index) => {
     const original = file?.name;
     if (!original) {
-      continue;
+      return;
     }
     // Mirror exactly what downloader.js writes to disk.
-    const sanitized = sanitizeFilename(original) || path.basename(original);
+    const sanitized = resolveAssetFileName(original, index);
     if (sanitized && sanitized !== original) {
       renames.push({ original, sanitized });
     }
-  }
+  });
   return renames;
 };
 
@@ -134,6 +160,7 @@ const dedupeFilename = (filename, usedNames) => {
 module.exports = {
   ensureDirectoryExists,
   sanitizeFilename,
+  resolveAssetFileName,
   buildAssetRenameMap,
   rewriteAssetReferences,
   resolveAssetUrl,

@@ -24,6 +24,25 @@ describe('scaffoldGalleryProject', () => {
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 
+  it('sketchUrl() targets the nested sketch/<name>/ path when sketchName is present, else the legacy path', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-gallery-'));
+    try {
+      await scaffoldGalleryProject(root, { curationId: 5, curationTitle: 'Gallery', quiet: true });
+      const js = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+      const match = js.match(/function sketchUrl\(project\) \{[\s\S]*?\n\}/);
+      expect(match).toBeTruthy();
+      const sketchUrl = new Function(
+        'encodeURIComponent',
+        `${match[0]}\nreturn sketchUrl;`
+      )(encodeURIComponent);
+
+      expect(sketchUrl({ dir: '1_A B', sketchName: 'My Sketch' }))
+        .toBe('./sketches/1_A%20B/sketch/My%20Sketch/index.html');
+      expect(sketchUrl({ dir: '1_A B' }))
+        .toBe('./sketches/1_A%20B/index.html');
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
   it('accepts an authored HTML, CSS, and JavaScript template directory', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-gallery-'));
     const templates = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-gallery-template-'));

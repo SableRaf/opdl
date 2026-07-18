@@ -113,15 +113,21 @@ When you download a sketch, `opdl` creates a new directory with the following st
 
 ```
 sketch_{id}/
-├── index.html             # Generated HTML for JS/CSS sketches
-├── [code files].js/.css   # Sanitized originals with attribution comments
-├── [assets]               # Images, sounds, etc.
-├── LICENSE                # Creative Commons notice (if provided)
-├── OPENPROCESSING.md      # Human-friendly metadata summary
+├── sketch/
+│   └── {name}/             # Named after the sketch's main code file
+│       ├── index.html      # Generated HTML for JS/CSS/pjs sketches
+│       ├── [code files]    # Sanitized originals with attribution comments
+│       └── [assets]        # Images, sounds, etc.
+├── LICENSE                 # Creative Commons notice (if provided)
+├── OPENPROCESSING.md       # Human-friendly metadata summary
 └── metadata/
-    ├── metadata.json      # Raw API response
-    └── thumbnail.jpg      # Visual thumbnail (if enabled)
+    ├── metadata.json       # Raw API response
+    └── thumbnail.jpg       # Visual thumbnail (if enabled)
 ```
+
+The runnable sketch (code, `index.html`, assets) lives in `sketch/{name}/`, separate from opdl's own bookkeeping (`metadata/`, `LICENSE`, `OPENPROCESSING.md`) at the top level. `{name}` is derived from the sketch's main code file, so `sketch/{name}/` opens cleanly on its own — handy when sharing or zipping just the sketch.
+
+**Processing.js (`pjs`) sketches** are downloaded as `.pde` files (real Processing/Java-like code, not JavaScript) alongside a generated `index.html` that loads them via a `<canvas data-processing-sources="...">` element — the same folder opens natively in the Processing PDE (no `sketch.properties` needed, since the folder is named after the main `.pde` file) and also runs in a browser via `--run` or `--vite`. Any `.js` tabs on a pjs sketch are helper scripts that run in the browser only — they won't execute inside the Processing PDE.
 
 ## Licenses and attribution
 
@@ -137,4 +143,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to the pro
 
 ## Acknowledgements
 
-This project is not affiliated with [OpenProcessing](https://openprocessing.org/), and is not officially supported. Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api, making this project possible. Thanks to the Processing community for sharing their creative work for others to learn from and enjoy.
+This project is not affiliated with [OpenProcessing](https://openprocessing.org/), and is not officially supported. Thanks to Sinan Ascioglu for creating OpenProcessing and providing the API at https://openprocessing.org/api, making this project possible. Thanks to the Processing community for sharing their creative work for others to learn from and enjoy.s

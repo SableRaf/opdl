@@ -5,6 +5,7 @@ const axios = require('axios');
 const {
   ensureDirectoryExists,
   sanitizeFilename,
+  resolveAssetFileName,
   buildAssetRenameMap,
   resolveAssetUrl,
   dedupeFilename,
@@ -12,12 +13,61 @@ const {
 const { generateIndexHtml } = require('./htmlGenerator');
 const { createLicenseFile } = require('./licenseHandler');
 const { createOpMetadata } = require('./metadataWriter');
-const { writeCodeFile } = require('./codeFileWriter');
+const { writeCodeFile, resolveCodeFileName } = require('./codeFileWriter');
 const { writeTutorial } = require('./tutorialWriter');
 const { promptFilenameConflictAction } = require('./filenameConflictPrompt');
+const { canonicalizeMode } = require('./sketchMode');
 
 const META_DIR = 'metadata';
+const SKETCH_DIR = 'sketch';
 const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
+
+/**
+ * Resolve the final filename list for all code parts in one pass, before
+ * anything is written, so the sketch folder name (derived from the main .pde
+ * or first code file) and the actual writes can never disagree. Dedup uses a
+ * temporary Set scoped to this prepass only — the write loop starts fresh
+ * (see writeCodeFile), replaying the same names in the same order.
+ */
+function resolvePrepassFileNames(codeParts, { fallbackBase, defaultExtension, indexedFallback }) {
+  const prepassUsedNames = new Set();
+  return codeParts.map((codeBlock, index) => {
+    const name = resolveCodeFileName({
+      title: codeBlock.title,
+      index,
+      fallbackBase,
+      defaultExtension,
+      indexedFallback,
+    });
+    const deduped = dedupeFilename(name, prepassUsedNames);
+    prepassUsedNames.add(deduped);
+    return deduped;
+  });
+}
+
+/**
+ * Pick the sketch folder name for pjs sketches: the first resolved filename
+ * ending in .pde (case-insensitive), extension stripped by actual length so
+ * an uppercase .PDE is handled correctly. Falls back to the first resolved
+ * code filename when no .pde tab exists (e.g. a pjs sketch with only JS/HTML
+ * tabs), and finally to 'sketch' when there are no code parts at all.
+ */
+function pickSketchName(resolvedFileNames, isPjs) {
+  if (isPjs) {
+    const mainPde = resolvedFileNames.find((name) => name.toLowerCase().endsWith('.pde'));
+    if (mainPde) {
+      const ext = path.extname(mainPde);
+      return { sketchName: mainPde.slice(0, -ext.length), mainPde };
+    }
+  }
+  const first = resolvedFileNames[0];
+  if (!first) {
+    return { sketchName: 'sketch', mainPde: null };
+  }
+  const ext = path.extname(first);
+  const stem = ext ? first.slice(0, -ext.length) : first;
+  return { sketchName: stem || 'sketch', mainPde: null };
+}
 
 const downloadSketch = async (sketchInfo, options = {}) => {
   const finalOptions = { ...options };
@@ -30,9 +80,20 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   const shouldAddSourceComments = finalOptions.addSourceComments;
   const onFilenameConflict = finalOptions.onFilenameConflict || promptFilenameConflictAction;
 
+  const isPjs = canonicalizeMode(sketchInfo.metadata?.mode) === 'pjs';
+  const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
+
+  const resolverOptions = isPjs
+    ? { fallbackBase: 'sketch', defaultExtension: '.pde', indexedFallback: false }
+    : { fallbackBase: 'part', defaultExtension: '.js', indexedFallback: true };
+  const resolvedFileNames = resolvePrepassFileNames(codeParts, resolverOptions);
+  const { sketchName } = pickSketchName(resolvedFileNames, isPjs);
+  const sketchDir = path.join(outputDir, SKETCH_DIR, sketchName);
+  ensureDirectoryExists(sketchDir);
+
+  const runtimeFiles = [];
   const savedCodeFiles = [];
   const sanitizedCodeParts = [];
-  const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
   const rootUsedNames = new Set();
 
   const files = Array.isArray(sketchInfo.files) ? sketchInfo.files : [];
@@ -41,18 +102,21 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   const assetRenames = buildAssetRenameMap(files);
 
   for (let index = 0; index < codeParts.length; index += 1) {
-    const { codeFilePath, sanitizedCodeBlock } = writeCodeFile({
-      outputDir,
+    const { codeFilePath, codeFileName, sanitizedCodeBlock } = writeCodeFile({
+      outputDir: sketchDir,
       codeBlock: codeParts[index],
       index,
       sketchInfo,
       addSourceComments: shouldAddSourceComments,
-      fallbackBase: 'part',
+      fallbackBase: resolverOptions.fallbackBase,
+      defaultExtension: resolverOptions.defaultExtension,
+      resolvedFileName: resolvedFileNames[index],
       usedNames: rootUsedNames,
       assetRenames,
     });
     savedCodeFiles.push(codeFilePath);
     sanitizedCodeParts.push(sanitizedCodeBlock);
+    runtimeFiles.push(codeFileName);
   }
 
   const assetBaseUrl = sketchInfo.metadata?.fileBase;
@@ -64,7 +128,8 @@ const downloadSketch = async (sketchInfo, options = {}) => {
         console.warn('opdl: metadata.fileBase missing, cannot download assets');
       }
     } else {
-      for (const file of files) {
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+        const file = files[fileIndex];
         const filename = file?.name;
         if (!filename) {
           if (!finalOptions.quiet) {
@@ -73,7 +138,7 @@ const downloadSketch = async (sketchInfo, options = {}) => {
           continue;
         }
 
-        let assetFileName = sanitizeFilename(filename) || path.basename(filename);
+        let assetFileName = resolveAssetFileName(filename, fileIndex);
         // A sketch's uploaded files can collide with an authoritative code
         // object of the same name — e.g. a stale index.html left over from an
         // older version that points at files no longer present. Writing it
@@ -108,8 +173,9 @@ const downloadSketch = async (sketchInfo, options = {}) => {
             console.log(`opdl: downloading asset ${filename} from ${assetUrl}`);
           }
           const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-          const assetFilePath = path.join(outputDir, assetFileName);
+          const assetFilePath = path.join(sketchDir, assetFileName);
           fs.writeFileSync(assetFilePath, response.data);
+          runtimeFiles.push(assetFileName);
         } catch (error) {
           if (!finalOptions.quiet) {
             console.warn(`opdl: failed to download asset ${filename}`);
@@ -160,7 +226,16 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   }
 
   if (sketchInfo.metadata?.mode && sketchInfo.metadata.mode !== 'html') {
-    generateIndexHtml(sketchInfo.metadata, sanitizedCodeParts, outputDir);
+    generateIndexHtml(sketchInfo.metadata, sanitizedCodeParts, sketchDir);
+  }
+  const generatedStyleCssPath = path.join(sketchDir, 'style.css');
+  if (fs.existsSync(generatedStyleCssPath) && !runtimeFiles.includes('style.css')) {
+    runtimeFiles.push('style.css');
+  }
+  if (fs.existsSync(path.join(sketchDir, 'index.html')) && !runtimeFiles.includes('index.html')) {
+    // Tracked for completeness; the Vite scaffolder excludes index.html from
+    // its copy allowlist (Vite owns it) regardless of this list's contents.
+    runtimeFiles.push('index.html');
   }
 
   if (finalOptions.createLicenseFile) {
@@ -184,8 +259,9 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   // Set up Vite project if requested
   if (finalOptions.vite) {
     const { scaffoldViteProject } = require('./viteScaffolder');
-    await scaffoldViteProject(outputDir, sketchInfo, {
+    await scaffoldViteProject(sketchDir, sketchInfo, {
       codeFiles: savedCodeFiles,
+      runtimeFiles,
       quiet: finalOptions.quiet,
       run: finalOptions.run,
     });
@@ -196,10 +272,12 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     }
     // Run simple HTTP server for non-Vite projects
     const { runDevServer } = require('./serverRunner');
-    await runDevServer(outputDir, { vite: false, quiet: finalOptions.quiet });
+    await runDevServer(sketchDir, { vite: false, quiet: finalOptions.quiet });
   }
 
-  return { outputDir, metadataDir, codeFiles: savedCodeFiles };
+  return {
+    outputDir, metadataDir, sketchDir, sketchName, codeFiles: savedCodeFiles,
+  };
 };
 
 module.exports = { downloadSketch };

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { generateIndexHtml, DEFAULT_STYLESHEET, CENTERED_STYLESHEET } from '../../src/download/htmlGenerator';
@@ -333,6 +333,115 @@ describe('htmlGenerator', () => {
 
       expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(false);
       expect(fs.existsSync(path.join(testDir, 'style.css'))).toBe(false);
+    });
+
+    it('pjs: renders a canvas with data-processing-sources for .pde tabs, no script src for .pde', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'pjs',
+      };
+      const codeParts = [
+        { title: 'MySketch.pde' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('<canvas data-processing-sources="MySketch.pde"></canvas>');
+      expect(content).not.toContain('<script src="MySketch.pde">');
+    });
+
+    it('pjs: lists multiple .pde tabs on the canvas in tab order', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'pjs',
+      };
+      const codeParts = [
+        { title: 'a.pde' },
+        { title: 'b.pde' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('data-processing-sources="a.pde b.pde"');
+    });
+
+    it('pjs: treats the processingjs alias identically to pjs', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'processingjs',
+      };
+      const codeParts = [{ title: 'Main.pde' }];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('data-processing-sources="Main.pde"');
+    });
+
+    it('pjs: excludes .js helper tabs from the canvas but keeps them as <script src>', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'pjs',
+      };
+      const codeParts = [
+        { title: 'Main.pde' },
+        { title: 'helper.js' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).toContain('data-processing-sources="Main.pde"');
+      expect(content).not.toContain('data-processing-sources="Main.pde helper.js"');
+      expect(content).toContain('<script src="helper.js"></script>');
+    });
+
+    it('pjs: falls back to plain <script src> wiring and warns when there are no .pde tabs', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'pjs',
+      };
+      const codeParts = [{ title: 'sketch.js' }];
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).not.toContain('data-processing-sources');
+      expect(content).toContain('<script src="sketch.js"></script>');
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('pjs: an existing index.html code object still short-circuits (early return)', () => {
+      const metadata = {
+        engineURL: 'https://example.com/processing.js',
+        mode: 'pjs',
+      };
+      const codeParts = [
+        { title: 'index.html' },
+        { title: 'Main.pde' },
+      ];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+
+      expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(false);
+    });
+
+    it('non-pjs modes are unaffected by the pjs canvas branch', () => {
+      const metadata = {
+        engineURL: 'https://example.com/p5.js',
+        mode: 'p5js',
+      };
+      const codeParts = [{ title: 'sketch.js' }];
+
+      generateIndexHtml(metadata, codeParts, testDir);
+      const content = fs.readFileSync(path.join(testDir, 'index.html'), 'utf8');
+
+      expect(content).not.toContain('data-processing-sources');
+      expect(content).toContain('<script src="sketch.js"></script>');
     });
 
     it('should filter out code parts without titles', () => {

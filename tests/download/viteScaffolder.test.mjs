@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { scaffoldViteProject } from '../../src/download/viteScaffolder.js';
+import { scaffoldViteProject, buildCompletionMessage } from '../../src/download/viteScaffolder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -394,4 +396,188 @@ describe('viteScaffolder', () => {
       expect(runDevServerFn).toHaveBeenCalledWith(testDir, { vite: true, quiet: true });
     });
   });
+
+  describe('buildCompletionMessage', () => {
+    it('uses a relative path shell-quoted for a cd-and-run command', () => {
+      const message = buildCompletionMessage(testDir);
+      const relative = path.relative(process.cwd(), testDir);
+      expect(message).toContain(`cd '${relative}'`);
+      expect(message).toContain('npm run dev');
+    });
+
+    it('escapes single quotes in a path so the command stays runnable', () => {
+      const weirdDir = path.join(testDir, "it's a dir");
+      const message = buildCompletionMessage(weirdDir);
+      const relative = path.relative(process.cwd(), weirdDir);
+      expect(message).toContain(`cd '${relative.replace(/'/g, "'\\''")}'`);
+    });
+  });
+
+  describe('pjs scaffold (--vite)', () => {
+    it('moves nothing: .pde, .js helper, .css, and a downloaded image stay at the project root', async () => {
+      const pdeFile = path.join(testDir, 'MySketch.pde');
+      const jsHelper = path.join(testDir, 'helper.js');
+      const cssFile = path.join(testDir, 'style.css');
+      const imageFile = path.join(testDir, 'image.png');
+      const envFile = path.join(testDir, '.env');
+      fs.writeFileSync(pdeFile, 'void setup() {}', 'utf8');
+      fs.writeFileSync(jsHelper, 'function helper() {}', 'utf8');
+      fs.writeFileSync(cssFile, 'body { margin: 0; }', 'utf8');
+      fs.writeFileSync(imageFile, 'fake image data', 'utf8');
+      fs.writeFileSync(envFile, 'SECRET=1', 'utf8');
+
+      const indexHtmlPath = path.join(testDir, 'index.html');
+      const originalHtml = `<!DOCTYPE html><html><head><script src="https://openprocessing.org/openprocessing_sketch.js"></script></head><body>\n<canvas data-processing-sources="MySketch.pde"></canvas>\n</body></html>`;
+      fs.writeFileSync(indexHtmlPath, originalHtml, 'utf8');
+
+      const sketchInfo = { sketchId: 12345, metadata: { mode: 'pjs' } };
+
+      await scaffoldViteProject(testDir, sketchInfo, {
+        codeFiles: [pdeFile, jsHelper, cssFile],
+        runtimeFiles: ['MySketch.pde', 'helper.js', 'style.css', 'image.png'],
+        quiet: true,
+      });
+
+      // Nothing moved.
+      expect(fs.existsSync(path.join(testDir, 'src'))).toBe(false);
+      expect(fs.existsSync(path.join(testDir, 'public'))).toBe(false);
+      expect(fs.existsSync(pdeFile)).toBe(true);
+      expect(fs.existsSync(jsHelper)).toBe(true);
+      expect(fs.existsSync(cssFile)).toBe(true);
+      expect(fs.existsSync(imageFile)).toBe(true);
+
+      // index.html unrewritten.
+      expect(fs.readFileSync(indexHtmlPath, 'utf8')).toBe(originalHtml);
+
+      // vite.config.js contains exactly the allowlisted runtime files, and
+      // the planted .env is not in the allowlist.
+      const viteConfig = fs.readFileSync(path.join(testDir, 'vite.config.js'), 'utf8');
+      const match = viteConfig.match(/const runtimeFiles = (\[[^\]]*\]);/);
+      expect(match).toBeTruthy();
+      const runtimeFiles = JSON.parse(match[1]);
+      expect(runtimeFiles.sort()).toEqual(['MySketch.pde', 'helper.js', 'image.png', 'style.css'].sort());
+      expect(runtimeFiles).not.toContain('.env');
+      expect(runtimeFiles).not.toContain('index.html');
+    });
+
+    it('resolves an asset with quotes/backticks to its safe resolveAssetFileName equivalent in the allowlist', async () => {
+      const pdeFile = path.join(testDir, 'Main.pde');
+      fs.writeFileSync(pdeFile, 'void setup() {}', 'utf8');
+      const safeAssetName = 'asset_1.png';
+      fs.writeFileSync(path.join(testDir, safeAssetName), 'img', 'utf8');
+
+      const sketchInfo = { sketchId: 1, metadata: { mode: 'pjs' } };
+
+      await scaffoldViteProject(testDir, sketchInfo, {
+        codeFiles: [pdeFile],
+        runtimeFiles: ['Main.pde', safeAssetName],
+        quiet: true,
+      });
+
+      const viteConfig = fs.readFileSync(path.join(testDir, 'vite.config.js'), 'utf8');
+      expect(viteConfig).toContain(`"${safeAssetName}"`);
+      // The generated config must stay syntactically valid.
+      expect(() => new Function(
+        viteConfig
+          .replace(/^import.*$/gm, '')
+          .replace(/export default defineConfig\(/, '(')
+      )).not.toThrow();
+    });
+
+    it('excludes unsafe/duplicate/index.html entries from the allowlist even if passed in runtimeFiles', async () => {
+      const pdeFile = path.join(testDir, 'Main.pde');
+      fs.writeFileSync(pdeFile, 'void setup() {}', 'utf8');
+
+      const sketchInfo = { sketchId: 1, metadata: { mode: 'pjs' } };
+
+      await scaffoldViteProject(testDir, sketchInfo, {
+        codeFiles: [pdeFile],
+        runtimeFiles: ['Main.pde', 'Main.pde', 'index.html', '../evil.js', '/abs/evil.js'],
+        quiet: true,
+      });
+
+      const viteConfig = fs.readFileSync(path.join(testDir, 'vite.config.js'), 'utf8');
+      const match = viteConfig.match(/const runtimeFiles = (\[[^\]]*\]);/);
+      expect(match).toBeTruthy();
+      const runtimeFiles = JSON.parse(match[1]);
+      expect(runtimeFiles).toEqual(['Main.pde']);
+    });
+
+    it('completion message prints the full shell-quoted cd path for a pjs project', async () => {
+      const pdeFile = path.join(testDir, 'Main.pde');
+      fs.writeFileSync(pdeFile, 'void setup() {}', 'utf8');
+
+      const sketchInfo = { sketchId: 1, metadata: { mode: 'pjs' } };
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        await scaffoldViteProject(testDir, sketchInfo, {
+          codeFiles: [pdeFile],
+          runtimeFiles: ['Main.pde'],
+          quiet: true,
+        });
+      } finally {
+        logSpy.mockRestore();
+      }
+      // In quiet mode npm install is skipped, so assert package.json + config exist
+      // (the completion message itself is covered by the buildCompletionMessage suite).
+      expect(fs.existsSync(path.join(testDir, 'package.json'))).toBe(true);
+      expect(fs.existsSync(path.join(testDir, 'vite.config.js'))).toBe(true);
+    });
+
+    it('p5js vite still scaffolds rooted at the given sketchDir (regression: pjs branch must not affect it)', async () => {
+      const codeFile = path.join(testDir, 'sketch.js');
+      fs.writeFileSync(codeFile, 'function setup() {}', 'utf8');
+
+      const sketchInfo = { sketchId: 1, metadata: { mode: 'p5js' } };
+      await scaffoldViteProject(testDir, sketchInfo, {
+        codeFiles: [codeFile],
+        quiet: true,
+      });
+
+      expect(fs.existsSync(path.join(testDir, 'src', 'sketch.js'))).toBe(true);
+      expect(fs.existsSync(path.join(testDir, 'package.json'))).toBe(true);
+    });
+  });
+});
+
+// Opt-in only (npm install + a real Vite build are slow/network-dependent),
+// so the default `npm test` stays deterministic. Run with:
+//   OPDL_INTEGRATION=1 npm test
+describe.skipIf(process.env.OPDL_INTEGRATION !== '1')('pjs Vite build integration', () => {
+  it('npm run build copies index.html + every .pde + the .js helper + the image into dist/, and excludes .env', async () => {
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-vite-build-'));
+    try {
+      const pdeFile = path.join(projectDir, 'MySketch.pde');
+      const jsHelper = path.join(projectDir, 'helper.js');
+      const imageFile = path.join(projectDir, 'image.png');
+      fs.writeFileSync(pdeFile, 'void setup() { size(100, 100); }', 'utf8');
+      fs.writeFileSync(jsHelper, 'function helper() {}', 'utf8');
+      fs.writeFileSync(imageFile, 'fake image data', 'utf8');
+      fs.writeFileSync(path.join(projectDir, '.env'), 'SECRET=1', 'utf8');
+      fs.writeFileSync(
+        path.join(projectDir, 'index.html'),
+        '<!DOCTYPE html><html><head><script src="https://openprocessing.org/openprocessing_sketch.js"></script></head><body>\n<canvas data-processing-sources="MySketch.pde"></canvas>\n</body></html>',
+        'utf8'
+      );
+
+      const sketchInfo = { sketchId: 999, metadata: { mode: 'pjs' } };
+      await scaffoldViteProject(projectDir, sketchInfo, {
+        codeFiles: [pdeFile, jsHelper],
+        runtimeFiles: ['MySketch.pde', 'helper.js', 'image.png'],
+        quiet: true,
+      });
+
+      execFileSync('npm', ['install'], { cwd: projectDir, stdio: 'inherit' });
+      execFileSync('npm', ['run', 'build'], { cwd: projectDir, stdio: 'inherit' });
+
+      const distDir = path.join(projectDir, 'dist');
+      expect(fs.existsSync(path.join(distDir, 'index.html'))).toBe(true);
+      expect(fs.existsSync(path.join(distDir, 'MySketch.pde'))).toBe(true);
+      expect(fs.existsSync(path.join(distDir, 'helper.js'))).toBe(true);
+      expect(fs.existsSync(path.join(distDir, 'image.png'))).toBe(true);
+      expect(fs.existsSync(path.join(distDir, '.env'))).toBe(false);
+    } finally {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
+  }, 180000);
 });

@@ -4,6 +4,7 @@ import path from 'path';
 import {
   ensureDirectoryExists,
   sanitizeFilename,
+  resolveAssetFileName,
   buildAssetRenameMap,
   rewriteAssetReferences,
   resolveAssetUrl,
@@ -49,6 +50,40 @@ describe('utils', () => {
     });
   });
 
+  describe('resolveAssetFileName', () => {
+    it('passes normal names through sanitized', () => {
+      expect(resolveAssetFileName('image.png', 0)).toBe('image.png');
+      expect(resolveAssetFileName('Bottle slide.m4a', 3)).toBe('Bottle_slide.m4a');
+    });
+
+    it('falls back to asset_<n> when the original sanitizes to an empty string', () => {
+      expect(resolveAssetFileName('***', 0)).toBe('asset_1');
+    });
+
+    it('strips quotes/backticks like sanitizeFilename does elsewhere', () => {
+      const result = resolveAssetFileName('weird`"name.png', 4);
+      expect(result).toBe('weirdname.png');
+    });
+
+    it('falls back to asset_<n>.<ext> when the sanitized result is a bare extension with no stem', () => {
+      // '???.png' sanitizes to '.png' — sanitization-stable but has no usable
+      // stem, so it would land on disk as a hidden dotfile, not a real name.
+      const result = resolveAssetFileName('???.png', 2);
+      expect(result).toBe('asset_3.png');
+    });
+
+    it('drops the extension when it is itself unsalvageable', () => {
+      const result = resolveAssetFileName('file.`"', 0);
+      expect(result).toBe('asset_1');
+    });
+
+    it('never returns the raw unsanitized original as a fallback', () => {
+      const result = resolveAssetFileName('a"b`c.png', 1);
+      expect(result).not.toBe('a"b`c.png');
+      expect(sanitizeFilename(result)).toBe(result);
+    });
+  });
+
   describe('buildAssetRenameMap', () => {
     it('includes only files whose sanitized name differs', () => {
       const files = [
@@ -58,6 +93,19 @@ describe('utils', () => {
       ];
       expect(buildAssetRenameMap(files)).toEqual([
         { original: 'Bottle slide.m4a', sanitized: 'Bottle_slide.m4a' },
+      ]);
+    });
+
+    it('agrees with resolveAssetFileName by index for quote/backtick-bearing names', () => {
+      const files = [
+        { name: 'a"b`c.png' },
+        { name: 'plain.png' },
+        { name: '???.jpg' },
+      ];
+      const renames = buildAssetRenameMap(files);
+      expect(renames).toEqual([
+        { original: 'a"b`c.png', sanitized: resolveAssetFileName('a"b`c.png', 0) },
+        { original: '???.jpg', sanitized: resolveAssetFileName('???.jpg', 2) },
       ]);
     });
 
