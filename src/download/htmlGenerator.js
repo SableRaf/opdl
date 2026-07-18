@@ -7,10 +7,10 @@ const DEFAULT_STYLESHEET = `body {
 }
 `;
 
-// In p5.js mode, center the canvas in the viewport and use a neutral grey
-// backdrop so the sketch reads clearly against the page (matching how sketches
-// are framed on OpenProcessing).
-const P5_STYLESHEET = `body {
+// In p5.js and processing.js modes, center the canvas in the viewport and use a
+// neutral grey backdrop so the sketch reads clearly against the page (matching
+// how sketches are framed on OpenProcessing).
+const CENTERED_STYLESHEET = `body {
   padding: 0;
   margin: 0;
   min-height: 100vh;
@@ -93,9 +93,18 @@ const generateIndexHtml = (metadata, codeParts, outputDir) => {
 
   if (!hasExistingCss) {
     const stylesheetPath = path.join(outputDir, 'style.css');
-    const stylesheet = metadata.mode === 'p5js' ? P5_STYLESHEET : DEFAULT_STYLESHEET;
+    const centeredModes = ['p5js', 'processingjs'];
+    const stylesheet = centeredModes.includes(metadata.mode)
+      ? CENTERED_STYLESHEET
+      : DEFAULT_STYLESHEET;
     fs.writeFileSync(stylesheetPath, stylesheet, 'utf8');
   }
 };
 
-module.exports = { generateIndexHtml, DEFAULT_STYLESHEET, P5_STYLESHEET };
+module.exports = {
+  generateIndexHtml,
+  DEFAULT_STYLESHEET,
+  CENTERED_STYLESHEET,
+  // Backwards-compatible alias for the previous p5js-only name.
+  P5_STYLESHEET: CENTERED_STYLESHEET,
+};
