@@ -59,6 +59,16 @@ async function handleSketchCommand(args) {
 
     if (!result.success) {
       if (result.failureKind === 'recovery_required') {
+        if (!args.options.quiet) {
+          console.error('opdl: Transaction recovery failed. Inspect the following paths and resolve manually:');
+          console.error(`  - Destination: ${result.outputPath}`);
+          if (result.outputPath) {
+            console.error(`  - Staging: ${result.outputPath}.opdownload`);
+            console.error(`  - Marker: ${result.outputPath}.opdtxn`);
+            console.error(`  - Backup: ${result.outputPath}.opdold-*`);
+            console.error('Nothing was modified. Remove the marker and backups when ready to retry.');
+          }
+        }
         throw new Error(result.sketchInfo.error || 'Transaction recovery failed');
       }
       // Expected conditions (missing/private/hidden sketches) are the user's

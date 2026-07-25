@@ -39,6 +39,25 @@ function resolveFinalDirAndPolicy(outputDir, options = {}) {
   return { finalDir, policy };
 }
 
+function validateMarkerPaths(finalDir, marker) {
+  if (!marker || typeof marker !== 'object') {
+    throw new Error('Transaction marker is not a valid object');
+  }
+  const { stagingDir, backupDir, finalDir: markerFinalDir } = marker;
+  if (markerFinalDir !== finalDir) {
+    throw new Error(`Transaction marker references unexpected destination (${markerFinalDir}); expected ${finalDir}`);
+  }
+  if (stagingDir !== `${finalDir}${STAGING_SUFFIX}`) {
+    throw new Error(`Transaction marker records unexpected staging path (${stagingDir}); expected ${finalDir}${STAGING_SUFFIX}`);
+  }
+  const backupBasename = path.basename(backupDir);
+  const backupParent = path.dirname(backupDir);
+  const finalParent = path.dirname(finalDir);
+  if (backupParent !== finalParent || !backupBasename.startsWith(`${path.basename(finalDir)}.opdold-`)) {
+    throw new Error(`Transaction marker records invalid backup path (${backupDir}); must be a sibling of ${finalDir}`);
+  }
+}
+
 async function recoverFromMarker(finalDir, options = {}) {
   const markerPath = `${finalDir}.opdtxn`;
   if (!fs.existsSync(markerPath)) {
@@ -55,15 +74,17 @@ async function recoverFromMarker(finalDir, options = {}) {
     error.code = 'recovery_required';
     throw error;
   }
-  const { stagingDir, backupDir } = marker;
-  if (stagingDir !== `${finalDir}${STAGING_SUFFIX}` || !backupDir.startsWith(`${finalDir}.opdold-`)) {
+  try {
+    validateMarkerPaths(finalDir, marker);
+  } catch (validationError) {
     if (!options.quiet) {
-      console.warn(`opdl: transaction marker at ${markerPath} records unexpected paths; cannot recover`);
+      console.warn(`opdl: ${validationError.message}`);
     }
     const error = new Error('Transaction recovery failed: invalid marker paths');
     error.code = 'recovery_required';
     throw error;
   }
+  const { stagingDir, backupDir } = marker;
   const finalExists = fs.existsSync(finalDir);
   const backupExists = fs.existsSync(backupDir);
   const stagingExists = fs.existsSync(stagingDir);
@@ -97,8 +118,11 @@ async function recoverFromMarker(finalDir, options = {}) {
       fs.rmSync(markerPath, { force: true });
     } catch (error) {
       if (!options.quiet) {
-        console.warn(`opdl: could not remove marker ${markerPath}: ${error.message}`);
+        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
       }
+      const err = new Error('Transaction recovery failed: marker cleanup error');
+      err.code = 'recovery_required';
+      throw err;
     }
     return 'resolved';
   }
@@ -121,8 +145,11 @@ async function recoverFromMarker(finalDir, options = {}) {
       fs.rmSync(markerPath, { force: true });
     } catch (error) {
       if (!options.quiet) {
-        console.warn(`opdl: could not remove marker ${markerPath}: ${error.message}`);
+        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
       }
+      const err = new Error('Transaction recovery failed: marker cleanup error');
+      err.code = 'recovery_required';
+      throw err;
     }
     return 'resolved';
   }
@@ -312,8 +339,11 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     ? path.resolve(finalOptions.outputDir)
     : path.resolve(`sketch_${sketchId}`);
 
-  const { finalDir, policy } = resolveFinalDirAndPolicy(outputDirInput, finalOptions);
+  const { finalDir, policy: resolvedPolicy } = resolveFinalDirAndPolicy(outputDirInput, finalOptions);
 
+  await recoverFromMarker(finalDir, { quiet: finalOptions.quiet });
+
+  let policy = resolvedPolicy;
   if (!policy) {
     const { promptConflictAction } = require('./conflictPrompt');
     const onConflict = finalOptions.onConflict || promptConflictAction;
@@ -340,8 +370,6 @@ const downloadSketch = async (sketchInfo, options = {}) => {
   if (policy === 'cancel') {
     return { cancelled: true, outputDir: finalDir };
   }
-
-  await recoverFromMarker(finalDir, { quiet: finalOptions.quiet });
 
   const stagingDir = `${finalDir}${STAGING_SUFFIX}`;
   const cwd = path.resolve(process.cwd());
