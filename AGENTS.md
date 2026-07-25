@@ -64,6 +64,8 @@ npx vitest tests/fieldSelector.test.mjs
 3. **Downloader** ([src/downloader.js](src/downloader.js)) - Downloads code, assets, generates HTML
 4. **Output Generation** - Creates LICENSE, OPENPROCESSING.md, adds attribution comments
 
+**Output layout**: `<outputDir>/sketch/<name>/` holds the runnable sketch (code, `index.html`, assets); `<outputDir>/{metadata/,LICENSE,OPENPROCESSING.md}` holds opdl's bookkeeping. `<name>` comes from the main code file — for `pjs` (Processing.js) sketches specifically, that's the main `.pde` file, so the sketch folder opens directly in the Processing PDE (no `sketch.properties`). `pjs` tabs are written as `.pde` (not `.js`) and wired into `index.html` via `<canvas data-processing-sources="...">`. `downloadSketch()` returns `{ outputDir, metadataDir, sketchDir, sketchName, codeFiles }`; the public `opdl()` result also exposes `sketchName`/`sketchPath`.
+
 ### CLI Architecture
 
 **Command Flow**: `bin/opdl.js` → [src/cli.js](src/cli.js) (parser) → `src/commands/*` (handlers) → API client
@@ -174,15 +176,18 @@ npx vitest tests/fieldSelector.test.mjs
 Downloaded sketches create this structure:
 ```
 sketch_{id}/
-├── index.html              # Generated HTML entry point
-├── sketch.js               # Code files with attribution comments
-├── [assets]/               # Images, sounds, data files
+├── sketch/{name}/          # Runnable sketch, named after its main code file
+│   ├── index.html          # Generated HTML entry point (canvas form for pjs)
+│   ├── [code files]        # Code with attribution comments (.pde for pjs)
+│   └── [assets]            # Images, sounds, data files
 ├── LICENSE                 # Creative Commons or other license
 ├── OPENPROCESSING.md       # Human-readable metadata
 └── metadata/
     ├── metadata.json       # Raw API response
     └── thumbnail.jpg       # Visual thumbnail (if enabled)
 ```
+
+The runnable sketch lives in `sketch/{name}/`; opdl's bookkeeping stays at the top level. For `pjs` (Processing.js) sketches, `{name}` is the main `.pde` file, so `sketch/{name}/` opens directly in the Processing PDE.
 
 ## Important Files
 

@@ -223,6 +223,112 @@ describe('downloadCuration', () => {
     }
   });
 
+  it('manifest entry gets sketchName and a nested indexPath when opdlFn reports one', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      const client = conflictClient([{ visualID: 1, title: 'A' }]);
+      const opdlFn = vi.fn(async (id) => ({
+        success: true,
+        sketchName: 'MySketch',
+        sketchInfo: { visualID: id, title: 'A' },
+      }));
+      const result = await downloadCuration({
+        curationId: 9, client, opdlFn, scaffoldFn: vi.fn(),
+        options: { outputDir: root, quiet: true },
+      });
+      expect(result.manifest[0]).toMatchObject({
+        sketchName: 'MySketch',
+        indexPath: 'public/sketches/1_A/sketch/MySketch/index.html',
+      });
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('manifest entry omits sketchName and keeps the legacy indexPath when opdlFn does not report one', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+    try {
+      const client = conflictClient([{ visualID: 1, title: 'A' }]);
+      const opdlFn = okOpdl();
+      const result = await downloadCuration({
+        curationId: 9, client, opdlFn, scaffoldFn: vi.fn(),
+        options: { outputDir: root, quiet: true },
+      });
+      expect(result.manifest[0].sketchName).toBeUndefined();
+      expect(result.manifest[0].indexPath).toBe('public/sketches/1_A/index.html');
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  describe('skipped-entry sketchName recovery from disk', () => {
+    const seedNestedSketch = (root, dir, sketchName, meta) => {
+      const sketchDir = path.join(root, 'public', 'sketches', dir, 'sketch', sketchName);
+      fs.mkdirSync(sketchDir, { recursive: true });
+      fs.writeFileSync(path.join(sketchDir, `${sketchName}.pde`), 'void setup() {}');
+      const metaDir = path.join(root, 'public', 'sketches', dir, 'metadata');
+      fs.mkdirSync(metaDir, { recursive: true });
+      if (meta) fs.writeFileSync(path.join(metaDir, 'metadata.json'), JSON.stringify(meta));
+    };
+
+    it('recovers sketchName when sketch/ has exactly one directory child', async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+      try {
+        seedNestedSketch(root, '1_A', 'MySketch', { visualID: 1, title: 'A', mode: 'pjs' });
+        const result = await downloadCuration({
+          curationId: 9, client: conflictClient([{ visualID: 1, title: 'A' }]),
+          opdlFn: okOpdl(), scaffoldFn: vi.fn(), onConflict: vi.fn().mockResolvedValue('skip'),
+          options: { outputDir: root, quiet: true },
+        });
+        expect(result.manifest[0]).toMatchObject({
+          sketchName: 'MySketch',
+          indexPath: 'public/sketches/1_A/sketch/MySketch/index.html',
+        });
+      } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    });
+
+    it('omits sketchName when sketch/ is missing (legacy layout)', async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+      try {
+        seedExistingSketch(root, '1_A', { visualID: 1, title: 'A' });
+        const result = await downloadCuration({
+          curationId: 9, client: conflictClient([{ visualID: 1, title: 'A' }]),
+          opdlFn: okOpdl(), scaffoldFn: vi.fn(), onConflict: vi.fn().mockResolvedValue('skip'),
+          options: { outputDir: root, quiet: true },
+        });
+        expect(result.manifest[0].sketchName).toBeUndefined();
+        expect(result.manifest[0].indexPath).toBe('public/sketches/1_A/index.html');
+      } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    });
+
+    it('omits sketchName when sketch/ has multiple directory children (ambiguous)', async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+      try {
+        seedNestedSketch(root, '1_A', 'One', { visualID: 1, title: 'A' });
+        fs.mkdirSync(path.join(root, 'public', 'sketches', '1_A', 'sketch', 'Two'), { recursive: true });
+        const result = await downloadCuration({
+          curationId: 9, client: conflictClient([{ visualID: 1, title: 'A' }]),
+          opdlFn: okOpdl(), scaffoldFn: vi.fn(), onConflict: vi.fn().mockResolvedValue('skip'),
+          options: { outputDir: root, quiet: true },
+        });
+        expect(result.manifest[0].sketchName).toBeUndefined();
+        expect(result.manifest[0].indexPath).toBe('public/sketches/1_A/index.html');
+      } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    });
+
+    it('omits sketchName when sketch/ has no directory children (empty)', async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
+      try {
+        fs.mkdirSync(path.join(root, 'public', 'sketches', '1_A', 'sketch'), { recursive: true });
+        fs.mkdirSync(path.join(root, 'public', 'sketches', '1_A', 'metadata'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'public', 'sketches', '1_A', 'sketch', '.DS_Store'), '');
+        const result = await downloadCuration({
+          curationId: 9, client: conflictClient([{ visualID: 1, title: 'A' }]),
+          opdlFn: okOpdl(), scaffoldFn: vi.fn(), onConflict: vi.fn().mockResolvedValue('skip'),
+          options: { outputDir: root, quiet: true },
+        });
+        expect(result.manifest[0].sketchName).toBeUndefined();
+        expect(result.manifest[0].indexPath).toBe('public/sketches/1_A/index.html');
+      } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    });
+  });
+
   it('continues after thrown and unavailable sketches', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
     try {

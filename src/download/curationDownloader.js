@@ -23,6 +23,23 @@ function sketchDirExists(outputDir) {
   return fs.readdirSync(outputDir).length > 0;
 }
 
+// Recover the sketchName of a previously-downloaded sketch from its nested
+// <outputDir>/sketch/<name>/ layout: exactly one directory child means an
+// unambiguous recovery; a missing/empty/multiple-children `sketch/` means
+// either a legacy (pre-nested) layout or a corrupted one, so sketchName is
+// omitted and callers fall back to the legacy top-level indexPath.
+function recoverSketchNameFromDisk(outputDir) {
+  const sketchRoot = path.join(outputDir, 'sketch');
+  let entries;
+  try {
+    entries = fs.readdirSync(sketchRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const dirs = entries.filter((entry) => entry.isDirectory());
+  return dirs.length === 1 ? dirs[0].name : null;
+}
+
 // Manifest entry for a sketch we kept on disk instead of re-downloading.
 // metadata/metadata.json is the offline source of truth; the listed sketch
 // data fills any gaps (e.g. metadata saving was disabled on the earlier run).
@@ -34,13 +51,17 @@ function existingManifestEntry({ id, title, sketch, dir, outputDir }) {
     // fall back to listed sketch data
   }
   const metaAuthor = typeof meta.author === 'string' ? meta.author : meta.author?.fullname;
+  const sketchName = recoverSketchNameFromDisk(outputDir);
   return {
     id: meta.visualID || id,
     title: meta.title || title,
     author: metaAuthor || meta.fullname || authorName(sketch),
     mode: meta.mode || sketch.mode || '',
     dir,
-    indexPath: `public/sketches/${dir}/index.html`,
+    ...(sketchName ? { sketchName } : {}),
+    indexPath: sketchName
+      ? `public/sketches/${dir}/sketch/${sketchName}/index.html`
+      : `public/sketches/${dir}/index.html`,
     thumbnailPath: `public/sketches/${dir}/metadata/thumbnail.jpg`,
     engineURL: meta.engineURL || '',
     available: true,
@@ -162,7 +183,10 @@ async function downloadCuration({
       author: info.author || authorName(sketch),
       mode: info.mode || sketch.mode || '',
       dir,
-      indexPath: `public/sketches/${dir}/index.html`,
+      ...(result.sketchName ? { sketchName: result.sketchName } : {}),
+      indexPath: result.sketchName
+        ? `public/sketches/${dir}/sketch/${result.sketchName}/index.html`
+        : `public/sketches/${dir}/index.html`,
       thumbnailPath: `public/sketches/${dir}/metadata/thumbnail.jpg`,
       engineURL: info.engineURL || '',
       available: true,

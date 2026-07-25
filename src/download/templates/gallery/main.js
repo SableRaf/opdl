@@ -241,6 +241,9 @@ function showPrevious() {
 }
 
 function sketchUrl(project) {
+  if (project.sketchName) {
+    return `./sketches/${encodeURIComponent(project.dir)}/sketch/${encodeURIComponent(project.sketchName)}/index.html`;
+  }
   return `./sketches/${encodeURIComponent(project.dir)}/index.html`;
 }
 

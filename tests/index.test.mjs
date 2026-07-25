@@ -26,6 +26,8 @@ describe('opdl (integration)', () => {
 
     expect(result.success).toBe(false);
     expect(result.sketchInfo.error).toBe('Invalid sketch ID');
+    expect(result.sketchName).toBeNull();
+    expect(result.sketchPath).toBeNull();
   });
 
   it('should handle sketch with API errors', async () => {
@@ -51,6 +53,8 @@ describe('opdl (integration)', () => {
 
     expect(result.sketchInfo.error).toBeTruthy();
     expect(result.sketchInfo.error).toContain('Not found');
+    expect(result.sketchName).toBeNull();
+    expect(result.sketchPath).toBeNull();
   });
 
   it('should handle hidden code sketches', async () => {
@@ -89,6 +93,8 @@ describe('opdl (integration)', () => {
     expect(result.sketchInfo.title).toBe('Hidden Sketch');
     expect(result.sketchInfo.author).toBe('Test Author');
     expect(result.outputPath).toBeNull();
+    expect(result.sketchName).toBeNull();
+    expect(result.sketchPath).toBeNull();
   });
 
   it('should successfully download a p5js sketch', async () => {
@@ -138,9 +144,11 @@ describe('opdl (integration)', () => {
     expect(result.sketchInfo.mode).toBe('p5js');
     expect(result.sketchInfo.isFork).toBe(false);
     expect(result.outputPath).toBe(testDir);
+    expect(result.sketchName).toBe('sketch');
+    expect(result.sketchPath).toBe(path.join(testDir, 'sketch', 'sketch'));
 
-    expect(fs.existsSync(path.join(testDir, 'sketch.js'))).toBe(true);
-    expect(fs.existsSync(path.join(testDir, 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'sketch.js'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(testDir, 'LICENSE'))).toBe(true);
     expect(fs.existsSync(path.join(testDir, 'OPENPROCESSING.md'))).toBe(true);
   });
@@ -185,7 +193,12 @@ describe('opdl (integration)', () => {
 
     expect(result.success).toBe(true);
     expect(result.sketchInfo.mode).toBe('processingjs');
-    expect(fs.existsSync(path.join(testDir, 'mysketch.js'))).toBe(true);
+    expect(result.sketchName).toBe('mysketch');
+    expect(fs.existsSync(path.join(result.sketchPath, 'mysketch.pde'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'sketch.properties'))).toBe(false);
+
+    const html = fs.readFileSync(path.join(result.sketchPath, 'index.html'), 'utf8');
+    expect(html).toContain('data-processing-sources="mysketch.pde"');
   });
 
   it('should handle fork sketches', async () => {
@@ -241,7 +254,7 @@ describe('opdl (integration)', () => {
     expect(result.success).toBe(true);
     expect(result.sketchInfo.isFork).toBe(true);
 
-    const codeContent = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
+    const codeContent = fs.readFileSync(path.join(result.sketchPath, 'sketch.js'), 'utf8');
     expect(codeContent).toContain('Forked from: Original Sketch by Original Author');
 
     const opMd = fs.readFileSync(path.join(testDir, 'OPENPROCESSING.md'), 'utf8');
@@ -293,7 +306,7 @@ describe('opdl (integration)', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(fs.existsSync(path.join(testDir, 'image.png'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'image.png'))).toBe(true);
   });
 
   it('should use default options when none provided', async () => {
@@ -337,13 +350,13 @@ describe('opdl (integration)', () => {
 
     const outputPath = result.outputPath;
     expect(fs.existsSync(outputPath)).toBe(true);
-    expect(fs.existsSync(path.join(outputPath, 'sketch.js'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'sketch.js'))).toBe(true);
     expect(fs.existsSync(path.join(outputPath, 'LICENSE'))).toBe(true);
     expect(fs.existsSync(path.join(outputPath, 'OPENPROCESSING.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputPath, 'metadata', 'metadata.json'))).toBe(true);
     expect(fs.existsSync(path.join(outputPath, 'metadata', 'thumbnail.jpg'))).toBe(true);
 
-    const codeContent = fs.readFileSync(path.join(outputPath, 'sketch.js'), 'utf8');
+    const codeContent = fs.readFileSync(path.join(result.sketchPath, 'sketch.js'), 'utf8');
     expect(codeContent).toContain('Downloaded with opdl');
 
     if (fs.existsSync(outputPath)) {
@@ -440,7 +453,7 @@ describe('opdl (integration)', () => {
 
     expect(result.success).toBe(true);
 
-    const htmlFiles = fs.readdirSync(testDir).filter(f => f === 'index.html');
+    const htmlFiles = fs.readdirSync(result.sketchPath).filter(f => f === 'index.html');
     expect(htmlFiles.length).toBe(1);
   });
 
@@ -486,13 +499,13 @@ describe('opdl (integration)', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(fs.existsSync(path.join(testDir, 'sketch.js'))).toBe(true);
+    expect(fs.existsSync(path.join(result.sketchPath, 'sketch.js'))).toBe(true);
     expect(fs.existsSync(path.join(testDir, 'LICENSE'))).toBe(false);
     expect(fs.existsSync(path.join(testDir, 'OPENPROCESSING.md'))).toBe(false);
     expect(fs.existsSync(path.join(testDir, 'metadata', 'metadata.json'))).toBe(false);
     expect(fs.existsSync(path.join(testDir, 'metadata', 'thumbnail.jpg'))).toBe(false);
 
-    const codeContent = fs.readFileSync(path.join(testDir, 'sketch.js'), 'utf8');
+    const codeContent = fs.readFileSync(path.join(result.sketchPath, 'sketch.js'), 'utf8');
     expect(codeContent).not.toContain('Downloaded with opdl');
   });
 

@@ -20,7 +20,7 @@ const getLicenseDisplay = (licenseCode) => {
 // Only prepend attribution to file types where a leading comment is always safe.
 // Notably shaders are excluded: GLSL requires the `#version` directive on the very
 // first line, so a prepended comment block breaks compilation.
-const ATTRIBUTION_EXTENSIONS = new Set(['.js', '.html', '.htm']);
+const ATTRIBUTION_EXTENSIONS = new Set(['.js', '.html', '.htm', '.pde']);
 
 const shouldAddAttribution = (fileExtension = '') =>
   ATTRIBUTION_EXTENSIONS.has(fileExtension.toLowerCase());
