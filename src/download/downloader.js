@@ -91,8 +91,8 @@ async function recoverFromMarker(finalDir, options = {}) {
   if (!finalExists && backupExists && stagingExists) {
     try {
       fs.renameSync(backupDir, finalDir);
-      try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch {}
-      try { fs.rmSync(markerPath, { force: true }); } catch {}
+      fs.rmSync(stagingDir, { recursive: true, force: true });
+      fs.rmSync(markerPath, { force: true });
       return 'resolved';
     } catch (error) {
       if (!options.quiet) {
@@ -129,7 +129,7 @@ async function recoverFromMarker(finalDir, options = {}) {
   if (finalExists && backupExists && !stagingExists) {
     try {
       fs.rmSync(backupDir, { recursive: true, force: true });
-      try { fs.rmSync(markerPath, { force: true }); } catch {}
+      fs.rmSync(markerPath, { force: true });
       return 'resolved';
     } catch (error) {
       if (!options.quiet) {
@@ -156,7 +156,7 @@ async function recoverFromMarker(finalDir, options = {}) {
   if (finalExists && !backupExists && stagingExists) {
     try {
       fs.rmSync(stagingDir, { recursive: true, force: true });
-      try { fs.rmSync(markerPath, { force: true }); } catch {}
+      fs.rmSync(markerPath, { force: true });
       return 'resolved';
     } catch (error) {
       if (!options.quiet) {
@@ -341,7 +341,14 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   const { finalDir, policy: resolvedPolicy } = resolveFinalDirAndPolicy(outputDirInput, finalOptions);
 
-  await recoverFromMarker(finalDir, { quiet: finalOptions.quiet });
+  try {
+    await recoverFromMarker(finalDir, { quiet: finalOptions.quiet });
+  } catch (error) {
+    if (error && error.code === 'recovery_required' && error.finalDir === undefined) {
+      error.finalDir = finalDir;
+    }
+    throw error;
+  }
 
   let policy = resolvedPolicy;
   if (!policy) {

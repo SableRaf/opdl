@@ -460,6 +460,36 @@ opdl curation sketches 12 --sort asc
 
 Options specific to sketch download operations.
 
+Downloads are staged into a sibling `<outputDir>.opdownload` directory and committed to
+the destination only once everything is written, so an interrupted or failed download
+never leaves a partially written destination behind — the operation is
+**crash-recoverable**. If a run is interrupted, the next run against the same
+`--outputDir` detects the leftover transaction automatically (via a `.opdtxn` marker) and
+resolves it before the new download starts.
+
+Three situations require manual intervention instead of being resolved automatically:
+
+- A **backup folder with no marker** (`<outputDir>.opdold-*` without a matching
+  `.opdtxn`). This is not treated as an interrupted run — opdl proceeds with the new
+  download and leaves the backup in place untouched; it is never restored
+  automatically and must be removed or inspected by hand.
+- A transaction marker whose recorded state is **ambiguous or corrupt**. opdl aborts
+  before touching anything and prints the paths to inspect.
+- A transaction marker whose recovery **partially completes and then fails** (for
+  example, a directory is restored or removed but a later cleanup step errors). opdl
+  aborts and prints the paths to inspect; some of them may already have changed, so
+  verify the current state of each before retrying rather than assuming nothing moved.
+
+Staging guarantees that interrupted or failed download operations do not leave a
+partially written destination. Individual asset and thumbnail failures remain non-fatal
+and are reported as warnings; a promoted sketch may therefore omit unavailable optional
+resources.
+
+Staging protects the initial sketch download through promotion. Optional Vite
+scaffolding, dependency installation, and server startup occur afterward and are not
+transactional. If Vite setup fails, the committed folder may contain a partially
+scaffolded project and may require manual cleanup or a replacement download.
+
 #### `--outputDir <path>`
 
 Specify the output directory for downloaded files. Defaults to `sketch_<id>` in the current directory.

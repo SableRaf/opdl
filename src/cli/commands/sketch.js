@@ -66,7 +66,7 @@ async function handleSketchCommand(args) {
             console.error(`  - Staging: ${result.outputPath}.opdownload`);
             console.error(`  - Marker: ${result.outputPath}.opdtxn`);
             console.error(`  - Backup: ${result.outputPath}.opdold-*`);
-            console.error('Nothing was modified. Remove the marker and backups when ready to retry.');
+            console.error('Recovery may have partially completed (e.g. restored or removed some of these paths) before failing. Verify the current state of each path before retrying; remove the marker once you are satisfied it is safe to do so.');
           }
         }
         throw new Error(result.sketchInfo.error || 'Transaction recovery failed');

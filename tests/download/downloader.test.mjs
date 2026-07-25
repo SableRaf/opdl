@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import nock from 'nock';
@@ -1420,7 +1420,7 @@ describe('downloader', () => {
       expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(true);
     });
 
-    it('recovery: clean final, clean staging, clean backup', async () => {
+    it('recovery: final absent, backup absent, staging absent removes stale marker', async () => {
       const sketchInfo = {
         sketchId: 1,
         title: 'T',
@@ -1451,6 +1451,292 @@ describe('downloader', () => {
 
       expect(result.outputDir).toBe(testDir);
       expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(false);
+    });
+
+    it('recovery: final present, backup absent, staging absent removes stale marker', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(testDir, { recursive: true });
+      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      const result = await downloadSketch(sketchInfo, {
+        outputDir: testDir,
+        downloadAssets: false,
+        saveMetadata: false,
+        downloadThumbnail: false,
+        createLicenseFile: false,
+        createOpMetadata: false,
+        addSourceComments: false,
+        quiet: true,
+      });
+
+      expect(result.outputDir).toBe(testDir);
+      expect(fs.existsSync(markerPath)).toBe(false);
+    });
+
+    it('recovery: ambiguous (final absent, backup absent, staging present) preserves staging and throws', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdownload/onlycopy.txt`, 'staging only');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      let threwCorrectError = false;
+      try {
+        await downloadSketch(sketchInfo, {
+          outputDir: testDir,
+          downloadAssets: false,
+          saveMetadata: false,
+          downloadThumbnail: false,
+          createLicenseFile: false,
+          createOpMetadata: false,
+          addSourceComments: false,
+          quiet: true,
+        });
+      } catch (error) {
+        threwCorrectError = error.code === 'recovery_required';
+      }
+      expect(threwCorrectError).toBe(true);
+      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(true);
+      expect(fs.existsSync(`${testDir}.opdownload/onlycopy.txt`)).toBe(true);
+      expect(fs.existsSync(markerPath)).toBe(true);
+      expect(fs.existsSync(testDir)).toBe(false);
+    });
+
+    it('recovery: ambiguous (final present, backup present, staging present) preserves everything and throws', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(testDir, { recursive: true });
+      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
+      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
+      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdownload/newsketch.txt`, 'staging');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      let threwCorrectError = false;
+      try {
+        await downloadSketch(sketchInfo, {
+          outputDir: testDir,
+          downloadAssets: false,
+          saveMetadata: false,
+          downloadThumbnail: false,
+          createLicenseFile: false,
+          createOpMetadata: false,
+          addSourceComments: false,
+          quiet: true,
+        });
+      } catch (error) {
+        threwCorrectError = error.code === 'recovery_required';
+      }
+      expect(threwCorrectError).toBe(true);
+      expect(fs.existsSync(testDir)).toBe(true);
+      expect(fs.existsSync(path.join(testDir, 'existing.txt'))).toBe(true);
+      expect(fs.existsSync(`${testDir}.opdold-1234-0`)).toBe(true);
+      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(true);
+      expect(fs.existsSync(markerPath)).toBe(true);
+    });
+
+    it('recovery: cleanup failure after restoring backup aborts as recovery_required', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
+      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdownload/newsketch.txt`, 'staging');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      // Backup restore (rename) succeeds, but the marker removal fails.
+      // Recovery must not report 'resolved' with the marker still present.
+      const originalRmSync = fs.rmSync.bind(fs);
+      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
+        if (target === markerPath) {
+          const error = new Error('EACCES: simulated permission denied');
+          error.code = 'EACCES';
+          throw error;
+        }
+        return originalRmSync(target, opts);
+      });
+
+      let threwCorrectError = false;
+      try {
+        await downloadSketch(sketchInfo, {
+          outputDir: testDir,
+          downloadAssets: false,
+          saveMetadata: false,
+          downloadThumbnail: false,
+          createLicenseFile: false,
+          createOpMetadata: false,
+          addSourceComments: false,
+          quiet: true,
+        });
+      } catch (error) {
+        threwCorrectError = error.code === 'recovery_required';
+      } finally {
+        rmSpy.mockRestore();
+      }
+      expect(threwCorrectError).toBe(true);
+      // final was restored from backup by the rename, but recovery must still
+      // report failure since the marker cleanup did not complete.
+      expect(fs.existsSync(testDir)).toBe(true);
+      expect(fs.existsSync(markerPath)).toBe(true);
+    });
+
+    it('recovery: marker cleanup failure after backup removal aborts as recovery_required', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(testDir, { recursive: true });
+      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
+      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      // final present, backup present, staging absent -> recovery removes the
+      // backup then the marker. Make only the marker removal fail.
+      const originalRmSync = fs.rmSync.bind(fs);
+      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
+        if (target === markerPath) {
+          const error = new Error('EACCES: simulated permission denied');
+          error.code = 'EACCES';
+          throw error;
+        }
+        return originalRmSync(target, opts);
+      });
+
+      let threwCorrectError = false;
+      try {
+        await downloadSketch(sketchInfo, {
+          outputDir: testDir,
+          downloadAssets: false,
+          saveMetadata: false,
+          downloadThumbnail: false,
+          createLicenseFile: false,
+          createOpMetadata: false,
+          addSourceComments: false,
+          quiet: true,
+        });
+      } catch (error) {
+        threwCorrectError = error.code === 'recovery_required';
+      } finally {
+        rmSpy.mockRestore();
+      }
+      expect(threwCorrectError).toBe(true);
+      expect(fs.existsSync(markerPath)).toBe(true);
+    });
+
+    it('recovery: marker cleanup failure after stale-staging removal aborts as recovery_required', async () => {
+      const sketchInfo = {
+        sketchId: 1,
+        title: 'T',
+        author: 'A',
+        codeParts: [{ title: 'sketch.js', code: 'x' }],
+        files: [],
+        metadata: { mode: 'p5js' },
+      };
+
+      fs.mkdirSync(testDir, { recursive: true });
+      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
+      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
+      fs.writeFileSync(`${testDir}.opdownload/stale.txt`, 'stale staging');
+      const markerPath = `${testDir}.opdtxn`;
+      fs.writeFileSync(markerPath, JSON.stringify({
+        stagingDir: `${testDir}.opdownload`,
+        backupDir: `${testDir}.opdold-1234-0`,
+        finalDir: testDir,
+      }), 'utf8');
+
+      // final present, backup absent, staging present -> recovery removes
+      // staging then the marker. Make only the marker removal fail.
+      const originalRmSync = fs.rmSync.bind(fs);
+      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
+        if (target === markerPath) {
+          const error = new Error('EACCES: simulated permission denied');
+          error.code = 'EACCES';
+          throw error;
+        }
+        return originalRmSync(target, opts);
+      });
+
+      let threwCorrectError = false;
+      try {
+        await downloadSketch(sketchInfo, {
+          outputDir: testDir,
+          downloadAssets: false,
+          saveMetadata: false,
+          downloadThumbnail: false,
+          createLicenseFile: false,
+          createOpMetadata: false,
+          addSourceComments: false,
+          quiet: true,
+        });
+      } catch (error) {
+        threwCorrectError = error.code === 'recovery_required';
+      } finally {
+        rmSpy.mockRestore();
+      }
+      expect(threwCorrectError).toBe(true);
+      expect(fs.existsSync(markerPath)).toBe(true);
     });
   });
 });

@@ -92,6 +92,9 @@ const opdl = async (sketchId, options = {}) => {
   } catch (error) {
     result.failureKind = error?.code || null;
     result.sketchInfo.error = error?.message || 'Failed to download sketch';
+    if (error?.finalDir) {
+      result.outputPath = error.finalDir;
+    }
   }
 
   return result;
