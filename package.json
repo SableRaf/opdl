@@ -52,7 +52,7 @@
     "sanitize-filename": "^1.6.3"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=14.14.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.16",

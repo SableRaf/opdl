@@ -23,6 +23,9 @@ const opdl = async (sketchId, options = {}) => {
     sketchName: null,
     sketchPath: null,
     unavailableReason: null,
+    failureKind: null,
+    skipped: false,
+    cancelled: false,
     sketchInfo: {
       title: '',
       author: '',
@@ -72,11 +75,22 @@ const opdl = async (sketchId, options = {}) => {
 
   try {
     const downloadResult = await downloadSketch(sketchInfo, mergedOptions);
-    result.success = true;
-    result.outputPath = downloadResult.outputDir;
-    result.sketchName = downloadResult.sketchName;
-    result.sketchPath = downloadResult.sketchDir;
+    if (downloadResult.skipped) {
+      result.success = true;
+      result.skipped = true;
+      result.outputPath = downloadResult.outputDir;
+    } else if (downloadResult.cancelled) {
+      result.success = true;
+      result.cancelled = true;
+      result.outputPath = downloadResult.outputDir;
+    } else {
+      result.success = true;
+      result.outputPath = downloadResult.outputDir;
+      result.sketchName = downloadResult.sketchName;
+      result.sketchPath = downloadResult.sketchDir;
+    }
   } catch (error) {
+    result.failureKind = error?.code || null;
     result.sketchInfo.error = error?.message || 'Failed to download sketch';
   }
 

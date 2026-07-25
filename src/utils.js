@@ -157,6 +157,25 @@ const dedupeFilename = (filename, usedNames) => {
   return candidate;
 };
 
+const copyDirSync = (src, dest, fsModule = fs) => {
+  fsModule.mkdirSync(dest, { recursive: true });
+  const entries = fsModule.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    const stat = fsModule.lstatSync(srcPath);
+    if (stat.isSymbolicLink()) {
+      fsModule.symlinkSync(fsModule.readlinkSync(srcPath), destPath);
+    } else if (stat.isDirectory()) {
+      copyDirSync(srcPath, destPath, fsModule);
+    } else if (stat.isFile()) {
+      fsModule.copyFileSync(srcPath, destPath);
+    } else {
+      throw new Error(`opdl: cannot merge unsupported entry type at ${srcPath}`);
+    }
+  }
+};
+
 module.exports = {
   ensureDirectoryExists,
   sanitizeFilename,
@@ -165,4 +184,5 @@ module.exports = {
   rewriteAssetReferences,
   resolveAssetUrl,
   dedupeFilename,
+  copyDirSync,
 };

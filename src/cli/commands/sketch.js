@@ -51,11 +51,16 @@ async function handleSketchCommand(args) {
       verbose: args.options.verbose || false,
       vite: args.options.vite || false,
       run: args.options.run || false,
+      overwrite: args.options.overwrite || false,
+      skipExisting: args.options.skipExisting || false,
     };
 
     const result = await opdl(sketchId, { ...downloadOptions, token });
 
     if (!result.success) {
+      if (result.failureKind === 'recovery_required') {
+        throw new Error(result.sketchInfo.error || 'Transaction recovery failed');
+      }
       // Expected conditions (missing/private/hidden sketches) are the user's
       // problem, not the API's — only probe health for genuinely unexpected
       // failures so we can tell an API outage apart from a plain bug.
@@ -72,9 +77,19 @@ async function handleSketchCommand(args) {
       throw new Error(result.sketchInfo.error || 'Failed to download sketch');
     }
 
-    // Print success message before starting server (since server blocks)
-    if (!args.options.quiet && !args.options.run) {
-      console.log(`Sketch downloaded to: ${result.outputPath}`);
+    if (result.skipped) {
+      if (!args.options.quiet) {
+        console.log(`Skipped: ${result.outputPath} already exists`);
+      }
+    } else if (result.cancelled) {
+      if (!args.options.quiet) {
+        console.log('Cancelled');
+      }
+    } else {
+      // Print success message before starting server (since server blocks)
+      if (!args.options.quiet && !args.options.run) {
+        console.log(`Sketch downloaded to: ${result.outputPath}`);
+      }
     }
   }
 }

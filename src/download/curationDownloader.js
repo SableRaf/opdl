@@ -142,7 +142,6 @@ async function downloadCuration({
         manifest.push(existingManifestEntry({ id, title, sketch, dir, outputDir }));
         continue;
       }
-      fs.rmSync(outputDir, { recursive: true, force: true });
     }
     if (!options.quiet) console.log(`opdl: Downloading sketch ${index + 1}/${sketches.length}: ${title}`);
     let result;
@@ -160,6 +159,7 @@ async function downloadCuration({
           verbose: options.verbose || false,
           token: options.token,
           onFilenameConflict: curationFilenameConflict,
+          conflictPolicy: 'replace',
           vite: false, run: false, quiet: true,
         });
         if (!result?.success) {

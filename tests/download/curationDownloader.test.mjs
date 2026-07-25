@@ -102,19 +102,19 @@ describe('downloadCuration', () => {
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 
-  it('overwrite clears the existing directory before re-downloading', async () => {
+  it('overwrite passes conflictPolicy to opdlFn', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-curation-'));
     try {
       seedExistingSketch(root, '1_A', null);
-      const stale = path.join(root, 'public', 'sketches', '1_A', 'stale.js');
       const opdlFn = okOpdl();
       const result = await downloadCuration({
         curationId: 9, client: conflictClient([{ visualID: 1, title: 'A' }]),
         opdlFn, scaffoldFn: vi.fn(), onConflict: vi.fn().mockResolvedValue('overwrite'),
         options: { outputDir: root, quiet: true },
       });
-      expect(fs.existsSync(stale)).toBe(false);
       expect(opdlFn).toHaveBeenCalledTimes(1);
+      const call = opdlFn.mock.calls[0];
+      expect(call[1]).toHaveProperty('conflictPolicy', 'replace');
       expect(result.skippedSketches).toEqual([]);
       expect(result.manifest).toHaveLength(1);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
