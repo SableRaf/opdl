@@ -36,4 +36,11 @@ describe('promptConflictAction', () => {
       expect(promptFn).not.toHaveBeenCalled();
     } finally { logSpy.mockRestore(); }
   });
+  it('skips a single existing sketch without prompting in unattended sessions', async () => {
+    const promptFn = vi.fn();
+    expect(await promptConflictAction({ single: true, isInteractive: false, promptFn })).toBe('skip');
+    expect(await promptConflictAction({ single: true, quiet: true, isInteractive: true, promptFn })).toBe('skip');
+    expect(promptFn).not.toHaveBeenCalled();
+  });
+
 });

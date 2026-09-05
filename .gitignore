@@ -4,8 +4,9 @@ coverage/
 *.log
 sketch_*
 *.opdownload
+*.opdownload-*
 *.opdold-*
-*.opdtxn
+*.opdlock
 .DS_Store
 .vscode/
 .env

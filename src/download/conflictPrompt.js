@@ -10,14 +10,14 @@ const CONFLICT_CHOICES = [
 
 const SINGLE_CONFLICT_CHOICES = [
   { title: 'Replace it (delete the existing folder)', value: 'replace' },
-  { title: 'Merge into it (keep files not in this download)', value: 'merge' },
+  { title: 'Skip this sketch', value: 'skip' },
   { title: 'Cancel', value: 'cancel' },
 ];
 
 /**
  * Ask what to do when a sketch directory already exists.
  * Non-interactive sessions (no TTY, or --quiet) default to skipping all
- * existing sketches (batch mode) or merging (single mode) so unattended runs
+ * existing sketches so unattended runs
  * never destroy local edits.
  * @param {Object} params
  * @param {string} params.title - Sketch title shown in the prompt (batch mode only)
@@ -26,7 +26,7 @@ const SINGLE_CONFLICT_CHOICES = [
  * @param {boolean} [params.quiet] - Suppress output and skip prompting
  * @param {boolean} [params.isInteractive] - Override TTY detection (for tests)
  * @param {Function} [params.promptFn] - Prompt implementation (for tests)
- * @returns {Promise<'skip'|'overwrite'|'skip-all'|'overwrite-all'|'replace'|'merge'|'cancel'>}
+ * @returns {Promise<'skip'|'overwrite'|'skip-all'|'overwrite-all'|'replace'|'cancel'>}
  */
 async function promptConflictAction({
   title,
@@ -40,7 +40,7 @@ async function promptConflictAction({
     if (!quiet && !single) {
       console.log(`opdl: Sketch "${title}" already exists. Skipping existing sketches (non-interactive session).`);
     }
-    return single ? 'merge' : 'skip-all';
+    return single ? 'skip' : 'skip-all';
   }
   if (single) {
     console.log(`${outputDir} already exists.`);

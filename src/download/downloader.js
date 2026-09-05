@@ -7,7 +7,6 @@ const {
   resolveAssetFileName,
   resolveAssetUrl,
   dedupeFilename,
-  copyDirSync,
 } = require('../utils');
 const { generateIndexHtml } = require('./htmlGenerator');
 const { createLicenseFile } = require('./licenseHandler');
@@ -19,15 +18,18 @@ const { canonicalizeMode } = require('./sketchMode');
 
 const META_DIR = 'metadata';
 const SKETCH_DIR = 'sketch';
-const STAGING_SUFFIX = '.opdownload';
+const STAGING_SUFFIX = '.opdownload-';
 const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
 
-let promotionCounter = 0;
+function pathExists(target) {
+  try { fs.lstatSync(target); return true; }
+  catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+}
 
 function resolveFinalDirAndPolicy(outputDir, options = {}) {
   const finalDir = path.resolve(outputDir);
   let policy = null;
-  if (!fs.existsSync(finalDir)) {
+  if (!pathExists(finalDir)) {
     policy = 'fresh';
   } else if (options.conflictPolicy) {
     policy = options.conflictPolicy;
@@ -39,189 +41,55 @@ function resolveFinalDirAndPolicy(outputDir, options = {}) {
   return { finalDir, policy };
 }
 
-function validateMarkerPaths(finalDir, marker) {
-  if (!marker || typeof marker !== 'object') {
-    throw new Error('Transaction marker is not a valid object');
-  }
-  const { stagingDir, backupDir, finalDir: markerFinalDir } = marker;
-  if (markerFinalDir !== finalDir) {
-    throw new Error(`Transaction marker references unexpected destination (${markerFinalDir}); expected ${finalDir}`);
-  }
-  if (stagingDir !== `${finalDir}${STAGING_SUFFIX}`) {
-    throw new Error(`Transaction marker records unexpected staging path (${stagingDir}); expected ${finalDir}${STAGING_SUFFIX}`);
-  }
-  const backupBasename = path.basename(backupDir);
-  const backupParent = path.dirname(backupDir);
-  const finalParent = path.dirname(finalDir);
-  if (backupParent !== finalParent || !backupBasename.startsWith(`${path.basename(finalDir)}.opdold-`)) {
-    throw new Error(`Transaction marker records invalid backup path (${backupDir}); must be a sibling of ${finalDir}`);
-  }
-}
-
-async function recoverFromMarker(finalDir, options = {}) {
-  const markerPath = `${finalDir}.opdtxn`;
-  if (!fs.existsSync(markerPath)) {
-    return 'resolved';
-  }
-  let marker;
+// Only promotion is locked. Downloads use independent staging directories and
+// never touch another run's files. A crash during promotion leaves the lock for
+// manual inspection; there is deliberately no automatic recovery protocol.
+function promoteStagingDir(stagingDir, finalDir, policy, quiet) {
+  const lockDir = `${finalDir}.opdlock`;
   try {
-    marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
-  } catch {
-    if (!options.quiet) {
-      console.warn(`opdl: transaction marker at ${markerPath} is corrupt; cannot recover`);
-    }
-    const error = new Error('Transaction recovery failed: corrupt marker');
-    error.code = 'recovery_required';
-    throw error;
-  }
-  try {
-    validateMarkerPaths(finalDir, marker);
-  } catch (validationError) {
-    if (!options.quiet) {
-      console.warn(`opdl: ${validationError.message}`);
-    }
-    const error = new Error('Transaction recovery failed: invalid marker paths');
-    error.code = 'recovery_required';
-    throw error;
-  }
-  const { stagingDir, backupDir } = marker;
-  const finalExists = fs.existsSync(finalDir);
-  const backupExists = fs.existsSync(backupDir);
-  const stagingExists = fs.existsSync(stagingDir);
-  if (!finalExists && backupExists && stagingExists) {
-    try {
-      fs.renameSync(backupDir, finalDir);
-      fs.rmSync(stagingDir, { recursive: true, force: true });
-      fs.rmSync(markerPath, { force: true });
-      return 'resolved';
-    } catch (error) {
-      if (!options.quiet) {
-        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
-      }
-      const err = new Error('Transaction recovery failed: cleanup error');
-      err.code = 'recovery_required';
-      throw err;
-    }
-  }
-  if (!finalExists && backupExists && !stagingExists) {
-    const err = new Error(`Transaction recovery failed: staging was already committed (${markerPath}). Backup preserved at ${backupDir}. Inspect both locations and remove the marker to retry.`);
-    err.code = 'recovery_required';
-    throw err;
-  }
-  if (!finalExists && !backupExists && stagingExists) {
-    const err = new Error(`Transaction recovery failed: state is ambiguous (staging present, backup absent). ${stagingDir} and ${markerPath} are preserved for manual recovery.`);
-    err.code = 'recovery_required';
-    throw err;
-  }
-  if (!finalExists && !backupExists && !stagingExists) {
-    try {
-      fs.rmSync(markerPath, { force: true });
-    } catch (error) {
-      if (!options.quiet) {
-        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
-      }
-      const err = new Error('Transaction recovery failed: marker cleanup error');
-      err.code = 'recovery_required';
-      throw err;
-    }
-    return 'resolved';
-  }
-  if (finalExists && backupExists && !stagingExists) {
-    try {
-      fs.rmSync(backupDir, { recursive: true, force: true });
-      fs.rmSync(markerPath, { force: true });
-      return 'resolved';
-    } catch (error) {
-      if (!options.quiet) {
-        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
-      }
-      const err = new Error('Transaction recovery failed: cleanup error');
-      err.code = 'recovery_required';
-      throw err;
-    }
-  }
-  if (finalExists && !backupExists && !stagingExists) {
-    try {
-      fs.rmSync(markerPath, { force: true });
-    } catch (error) {
-      if (!options.quiet) {
-        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
-      }
-      const err = new Error('Transaction recovery failed: marker cleanup error');
-      err.code = 'recovery_required';
-      throw err;
-    }
-    return 'resolved';
-  }
-  if (finalExists && !backupExists && stagingExists) {
-    try {
-      fs.rmSync(stagingDir, { recursive: true, force: true });
-      fs.rmSync(markerPath, { force: true });
-      return 'resolved';
-    } catch (error) {
-      if (!options.quiet) {
-        console.warn(`opdl: recovery cleanup failed: ${error.message}`);
-      }
-      const err = new Error('Transaction recovery failed: cleanup error');
-      err.code = 'recovery_required';
-      throw err;
-    }
-  }
-  if (finalExists && backupExists && stagingExists) {
-    const err = new Error(`Transaction recovery failed: state is ambiguous (all three directories present). Inspect ${finalDir}, ${backupDir}, and ${stagingDir}. ${markerPath} is preserved.`);
-    err.code = 'recovery_required';
-    throw err;
-  }
-  const err = new Error(`Transaction recovery failed: unexpected state at ${markerPath}`);
-  err.code = 'recovery_required';
-  throw err;
-}
-
-function prepareStagingDir(stagingDir, finalDir, policy, fsModule = fs) {
-  if (fsModule.existsSync(stagingDir)) {
-    fsModule.rmSync(stagingDir, { recursive: true, force: true });
-  }
-  fsModule.mkdirSync(stagingDir, { recursive: true });
-  if (policy === 'merge' && fsModule.existsSync(finalDir)) {
-    copyDirSync(finalDir, stagingDir, fsModule);
-  }
-}
-
-function promoteStagingDir(stagingDir, finalDir, fsModule = fs, quiet = false) {
-  fsModule.mkdirSync(path.dirname(finalDir), { recursive: true });
-  if (!fsModule.existsSync(finalDir)) {
-    fsModule.renameSync(stagingDir, finalDir);
-    return true;
-  }
-  const markerPath = `${finalDir}.opdtxn`;
-  let backupDir;
-  do {
-    backupDir = `${finalDir}.opdold-${process.pid}-${promotionCounter++}`;
-  } while (fsModule.existsSync(backupDir));
-  if (fsModule.existsSync(markerPath)) {
-    throw new Error(`opdl: a transaction is already in progress at ${markerPath}`);
-  }
-  fsModule.writeFileSync(markerPath, JSON.stringify({ stagingDir, backupDir, finalDir }), 'utf8');
-  fsModule.renameSync(finalDir, backupDir);
-  try {
-    fsModule.renameSync(stagingDir, finalDir);
+    fs.mkdirSync(lockDir);
   } catch (error) {
-    try { fsModule.rmSync(finalDir, { recursive: true, force: true }); } catch {}
-    fsModule.renameSync(backupDir, finalDir);
-    try { fsModule.rmSync(markerPath, { force: true }); } catch {}
+    if (error.code === 'EEXIST') {
+      throw new Error(`Promotion blocked by ${lockDir}. If no download is running, inspect ${finalDir} and its .opdold-* backups, then remove the lock directory to retry.`);
+    }
     throw error;
   }
-  for (const [label, target, opts] of [
-    ['marker', markerPath, { force: true }],
-    ['backup', backupDir, { recursive: true, force: true }],
-  ]) {
+  try {
+    if (!pathExists(finalDir)) {
+      fs.renameSync(stagingDir, finalDir);
+      return;
+    }
+    if (policy !== 'replace') {
+      throw new Error(`Destination appeared during download: ${finalDir}. Retry with --overwrite to replace it.`);
+    }
+    const backupDir = fs.mkdtempSync(`${finalDir}.opdold-`);
+    const original = path.join(backupDir, 'original');
+    fs.renameSync(finalDir, original);
     try {
-      fsModule.rmSync(target, opts);
+      fs.renameSync(stagingDir, finalDir);
     } catch (error) {
-      if (!quiet) console.warn(`opdl: could not remove ${label} ${target}: ${error.message}`);
+      try {
+        if (pathExists(finalDir)) throw new Error('destination already exists');
+        fs.renameSync(original, finalDir);
+      } catch (restoreError) {
+        throw new Error(`Promotion failed: ${error.message}. Previous download preserved at ${original}; restore it manually (${restoreError.message}).`);
+      }
+      try { fs.rmdirSync(backupDir); }
+      catch (cleanupError) {
+        if (!quiet) console.warn(`opdl: empty backup directory remains at ${backupDir}: ${cleanupError.message}`);
+      }
+      throw error;
+    }
+    try { fs.rmSync(backupDir, { recursive: true, force: true }); }
+    catch (error) {
+      if (!quiet) console.warn(`opdl: download completed, but backup remains at ${original}: ${error.message}`);
+    }
+  } finally {
+    try { fs.rmdirSync(lockDir); }
+    catch (error) {
+      if (!quiet) console.warn(`opdl: could not remove promotion lock ${lockDir}: ${error.message}`);
     }
   }
-  return true;
 }
 
 /**
@@ -341,15 +209,6 @@ const downloadSketch = async (sketchInfo, options = {}) => {
 
   const { finalDir, policy: resolvedPolicy } = resolveFinalDirAndPolicy(outputDirInput, finalOptions);
 
-  try {
-    await recoverFromMarker(finalDir, { quiet: finalOptions.quiet });
-  } catch (error) {
-    if (error && error.code === 'recovery_required' && error.finalDir === undefined) {
-      error.finalDir = finalDir;
-    }
-    throw error;
-  }
-
   let policy = resolvedPolicy;
   if (!policy) {
     const { promptConflictAction } = require('./conflictPrompt');
@@ -378,16 +237,18 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     return { cancelled: true, outputDir: finalDir };
   }
 
-  const stagingDir = `${finalDir}${STAGING_SUFFIX}`;
+  if (!['fresh', 'replace'].includes(policy)) {
+    throw new Error(`Unsupported conflict policy: ${policy}`);
+  }
   const cwd = path.resolve(process.cwd());
   if (finalDir === cwd || cwd.startsWith(finalDir + path.sep) || path.dirname(finalDir) === finalDir) {
     throw new Error(`opdl: --outputDir cannot be the current directory, an ancestor of it, or the filesystem root (${finalDir}). Use a subdirectory, e.g. --outputDir ./sketch.`);
   }
 
+  ensureDirectoryExists(path.dirname(finalDir));
+  const stagingDir = fs.mkdtempSync(`${finalDir}${STAGING_SUFFIX}`);
   let promoted = false;
   try {
-    prepareStagingDir(stagingDir, finalDir, policy);
-
     const outputDir = stagingDir;
     const shouldAddSourceComments = finalOptions.addSourceComments;
     const onFilenameConflict = finalOptions.onFilenameConflict || promptFilenameConflictAction;
@@ -569,7 +430,7 @@ const downloadSketch = async (sketchInfo, options = {}) => {
       }
     }
 
-    promoteStagingDir(stagingDir, finalDir, fs, finalOptions.quiet);
+    promoteStagingDir(stagingDir, finalDir, policy, finalOptions.quiet);
     promoted = true;
 
     const finalMetadataDir = path.join(finalDir, META_DIR);
@@ -598,16 +459,11 @@ const downloadSketch = async (sketchInfo, options = {}) => {
     return {
       outputDir: finalDir, metadataDir: finalMetadataDir, sketchDir: finalSketchDir, sketchName, codeFiles: finalCodeFiles,
     };
-  } finally {
-    if (!promoted && fs.existsSync(stagingDir)) {
-      try {
-        fs.rmSync(stagingDir, { recursive: true, force: true });
-      } catch (error) {
-        if (!finalOptions.quiet) {
-          console.warn(`opdl: could not clean up staging directory: ${error.message}`);
-        }
-      }
+  } catch (error) {
+    if (!promoted) {
+      error.message += ` Incomplete download retained at ${stagingDir}; inspect or delete it as needed.`;
     }
+    throw error;
   }
 };
 

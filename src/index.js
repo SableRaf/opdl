@@ -23,7 +23,6 @@ const opdl = async (sketchId, options = {}) => {
     sketchName: null,
     sketchPath: null,
     unavailableReason: null,
-    failureKind: null,
     skipped: false,
     cancelled: false,
     sketchInfo: {
@@ -90,11 +89,7 @@ const opdl = async (sketchId, options = {}) => {
       result.sketchPath = downloadResult.sketchDir;
     }
   } catch (error) {
-    result.failureKind = error?.code || null;
     result.sketchInfo.error = error?.message || 'Failed to download sketch';
-    if (error?.finalDir) {
-      result.outputPath = error.finalDir;
-    }
   }
 
   return result;

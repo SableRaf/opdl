@@ -58,19 +58,6 @@ async function handleSketchCommand(args) {
     const result = await opdl(sketchId, { ...downloadOptions, token });
 
     if (!result.success) {
-      if (result.failureKind === 'recovery_required') {
-        if (!args.options.quiet) {
-          console.error('opdl: Transaction recovery failed. Inspect the following paths and resolve manually:');
-          console.error(`  - Destination: ${result.outputPath}`);
-          if (result.outputPath) {
-            console.error(`  - Staging: ${result.outputPath}.opdownload`);
-            console.error(`  - Marker: ${result.outputPath}.opdtxn`);
-            console.error(`  - Backup: ${result.outputPath}.opdold-*`);
-            console.error('Recovery may have partially completed (e.g. restored or removed some of these paths) before failing. Verify the current state of each path before retrying; remove the marker once you are satisfied it is safe to do so.');
-          }
-        }
-        throw new Error(result.sketchInfo.error || 'Transaction recovery failed');
-      }
       // Expected conditions (missing/private/hidden sketches) are the user's
       // problem, not the API's — only probe health for genuinely unexpected
       // failures so we can tell an API outage apart from a plain bug.

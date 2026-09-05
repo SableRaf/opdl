@@ -460,35 +460,29 @@ opdl curation sketches 12 --sort asc
 
 Options specific to sketch download operations.
 
-Downloads are staged into a sibling `<outputDir>.opdownload` directory and committed to
-the destination only once everything is written, so an interrupted or failed download
-never leaves a partially written destination behind — the operation is
-**crash-recoverable**. If a run is interrupted, the next run against the same
-`--outputDir` detects the leftover transaction automatically (via a `.opdtxn` marker) and
-resolves it before the new download starts.
+Downloads are written to a unique sibling `<outputDir>.opdownload-*` directory.
+Only after the download finishes is that directory renamed to the destination.
+An interrupted or failed download therefore remains visibly temporary; unfinished
+folders are never resumed or removed automatically. You can inspect or delete them
+and retry. Reported failures include the temporary directory path.
 
-Three situations require manual intervention instead of being resolved automatically:
+Existing destinations are skipped in non-interactive or quiet sessions unless
+`--overwrite` is supplied. Interactive sessions offer replace, skip, or cancel.
+There is no merge operation. Replacement keeps the existing destination intact
+until the new download is ready, then temporarily moves it to
+`<outputDir>.opdold-*/original`. If promotion fails, opdl attempts to restore it;
+if restoration also fails, the error reports the backup path for manual restoration.
 
-- A **backup folder with no marker** (`<outputDir>.opdold-*` without a matching
-  `.opdtxn`). This is not treated as an interrupted run — opdl proceeds with the new
-  download and leaves the backup in place untouched; it is never restored
-  automatically and must be removed or inspected by hand.
-- A transaction marker whose recorded state is **ambiguous or corrupt**. opdl aborts
-  before touching anything and prints the paths to inspect.
-- A transaction marker whose recovery **partially completes and then fails** (for
-  example, a directory is restored or removed but a later cleanup step errors). opdl
-  aborts and prints the paths to inspect; some of them may already have changed, so
-  verify the current state of each before retrying rather than assuming nothing moved.
+A short-lived `<outputDir>.opdlock` directory prevents simultaneous promotions.
+If the process stops during promotion, inspect the destination and backup first.
+Once no download is running, restore the backup if needed and remove the lock
+directory before retrying. Leftover backups are never automatically restored or
+removed by a later run.
 
-Staging guarantees that interrupted or failed download operations do not leave a
-partially written destination. Individual asset and thumbnail failures remain non-fatal
-and are reported as warnings; a promoted sketch may therefore omit unavailable optional
-resources.
-
-Staging protects the initial sketch download through promotion. Optional Vite
-scaffolding, dependency installation, and server startup occur afterward and are not
-transactional. If Vite setup fails, the committed folder may contain a partially
-scaffolded project and may require manual cleanup or a replacement download.
+Individual asset and thumbnail failures remain non-fatal warnings, so a completed
+sketch may omit unavailable optional resources. Optional Vite scaffolding,
+dependency installation, and server startup happen after promotion and are not
+covered by staging.
 
 #### `--outputDir <path>`
 

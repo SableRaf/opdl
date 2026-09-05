@@ -13,9 +13,6 @@ describe('opdl (integration)', () => {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
-    if (fs.existsSync(`${testDir}.opdtxn`)) {
-      fs.rmSync(`${testDir}.opdtxn`, { force: true });
-    }
     if (fs.existsSync(`${testDir}.opdownload`)) {
       fs.rmSync(`${testDir}.opdownload`, { recursive: true, force: true });
     }
@@ -172,51 +169,6 @@ describe('opdl (integration)', () => {
     expect(fs.existsSync(path.join(result.sketchPath, 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(testDir, 'LICENSE'))).toBe(true);
     expect(fs.existsSync(path.join(testDir, 'OPENPROCESSING.md'))).toBe(true);
-  });
-
-  it('surfaces recovery_required with outputPath set when a transaction marker cannot be recovered', async () => {
-    const sketchId = 12345;
-
-    nock('https://openprocessing.org')
-      .get(`/api/sketch/${sketchId}`)
-      .reply(200, {
-        title: 'Test P5 Sketch',
-        mode: 'p5js',
-        userID: 100,
-        license: 'by',
-        engineURL: 'https://cdn.com/p5.js',
-      });
-
-    nock('https://openprocessing.org')
-      .get(`/api/user/100`)
-      .reply(200, { fullname: 'Test Author' });
-
-    nock('https://openprocessing.org')
-      .get(`/api/sketch/${sketchId}/code`)
-      .reply(200, [
-        { title: 'sketch.js', code: 'function setup() {}' },
-      ]);
-
-    nock('https://openprocessing.org')
-      .get(`/api/sketch/${sketchId}/files?limit=100&offset=0`)
-      .reply(200, []);
-
-    nock('https://openprocessing.org')
-      .get(`/api/sketch/${sketchId}/libraries?limit=100&offset=0`)
-      .reply(200, []);
-
-    fs.writeFileSync(`${testDir}.opdtxn`, 'not json', 'utf8');
-
-    const result = await opdl(sketchId, {
-      outputDir: testDir,
-      downloadAssets: false,
-      downloadThumbnail: false,
-      quiet: true,
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.failureKind).toBe('recovery_required');
-    expect(result.outputPath).toBe(testDir);
   });
 
   it('should successfully download a processingjs sketch', async () => {

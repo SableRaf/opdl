@@ -13,9 +13,6 @@ describe('downloader', () => {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
-    if (fs.existsSync(`${testDir}.opdtxn`)) {
-      fs.rmSync(`${testDir}.opdtxn`, { force: true });
-    }
     if (fs.existsSync(`${testDir}.opdownload`)) {
       fs.rmSync(`${testDir}.opdownload`, { recursive: true, force: true });
     }
@@ -23,7 +20,7 @@ describe('downloader', () => {
     try {
       const entries = fs.readdirSync(baseDir);
       for (const entry of entries) {
-        if (entry.startsWith(`${baseName}.opdold-`)) {
+        if (entry.startsWith(`${baseName}.opdold-`) || entry.startsWith(`${baseName}.opdownload-`) || entry === `${baseName}.opdlock`) {
           fs.rmSync(path.join(baseDir, entry), { recursive: true, force: true });
         }
       }
@@ -1151,592 +1148,123 @@ describe('downloader', () => {
   });
 
   describe('staging and promotion', () => {
-    it('stages download in .opdownload, leaves no staging on success', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
+    const info = { sketchId: 1, metadata: { mode: 'html' }, files: [],
+      codeParts: [{ title: 'main.js', code: 'complete' }] };
+    const options = { outputDir: testDir, quiet: true };
+    const artifacts = () => fs.readdirSync(path.dirname(testDir))
+      .filter(name => name.startsWith(path.basename(testDir) + '.opdownload-'));
 
-      await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-      });
-
-      expect(fs.existsSync(testDir)).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(false);
-      expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(false);
+    it('leaves unrelated unfinished downloads untouched', async () => {
+      const leftover = `${testDir}.opdownload-old`;
+      fs.mkdirSync(leftover);
+      fs.writeFileSync(path.join(leftover, 'partial'), 'unfinished');
+      await downloadSketch(info, options);
+      expect(fs.readFileSync(path.join(leftover, 'partial'), 'utf8')).toBe('unfinished');
+      expect(artifacts()).toEqual([path.basename(leftover)]);
     });
 
-    it('conflict handling with prompt before recovery runs', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'Existing',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'new' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(path.join(testDir, 'sketch', 'existing'), { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'sketch', 'existing', 'old.js'), 'old');
-
-      let promptCalled = false;
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-        onConflict: async () => {
-          promptCalled = true;
-          return 'merge';
-        },
-      });
-
-      expect(promptCalled).toBe(true);
-      expect(result.cancelled).not.toBe(true);
-      expect(fs.existsSync(testDir)).toBe(true);
-    });
-
-    it('skip returns skipped: true without writing', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'marker.txt'), 'existing');
-
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        skipExisting: true,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-      });
-
-      expect(result.skipped).toBe(true);
-      expect(fs.readFileSync(path.join(testDir, 'marker.txt'), 'utf8')).toBe('existing');
-    });
-
-    it('cancel returns cancelled: true without writing', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'marker.txt'), 'existing');
-
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-        onConflict: async () => 'cancel',
-      });
-
-      expect(result.cancelled).toBe(true);
-      expect(fs.readFileSync(path.join(testDir, 'marker.txt'), 'utf8')).toBe('existing');
-    });
-
-    it('rejects invalid marker paths with path traversal attempts', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      const markerPath = `${testDir}.opdtxn`;
-      const traversingBackup = `${testDir}.opdold-x/../victim`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: traversingBackup,
-        finalDir: testDir,
-      }), 'utf8');
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
-    });
-
-    it('rejects corrupt marker', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, 'not json', 'utf8');
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
-    });
-
-    it('recovery: interrupted promotion (final absent, backup present, staging present)', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      // Set up a backup from a previous run (simulates interrupted rename between
-      // step 2 "final->backup" and step 3 "staging->final")
-      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
-      // Staging dir (recovery will restore backup to final, then download overwrites)
-      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdownload/newsketch.txt`, 'staging');
-      // Transaction marker
-      fs.writeFileSync(`${testDir}.opdtxn`, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-        quiet: true,
-      });
-
-      // Recovery restored backup, then new download proceeded
-      expect(result.outputDir).toBe(testDir);
-      expect(fs.existsSync(testDir)).toBe(true);
-      // Transaction artifacts should be gone
-      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(false);
-      expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(false);
-      expect(fs.existsSync(`${testDir}.opdold-1234-0`)).toBe(false);
-      // New download should be present
-      expect(fs.existsSync(path.join(testDir, 'sketch'))).toBe(true);
-    });
-
-    it('recovery: ambiguous (final absent, backup present, staging absent) preserves and throws', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdold-1234-0/marker.txt`, 'backup');
-      fs.writeFileSync(`${testDir}.opdtxn`, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdold-1234-0`)).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(true);
-    });
-
-    it('recovery: final absent, backup absent, staging absent removes stale marker', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      // Make sure the expected marker can be parsed
-      fs.mkdirSync(path.dirname(testDir), { recursive: true });
-      fs.writeFileSync(`${testDir}.opdtxn`, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-        quiet: true,
-      });
-
-      expect(result.outputDir).toBe(testDir);
-      expect(fs.existsSync(`${testDir}.opdtxn`)).toBe(false);
-    });
-
-    it('recovery: final present, backup absent, staging absent removes stale marker', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      const result = await downloadSketch(sketchInfo, {
-        outputDir: testDir,
-        downloadAssets: false,
-        saveMetadata: false,
-        downloadThumbnail: false,
-        createLicenseFile: false,
-        createOpMetadata: false,
-        addSourceComments: false,
-        quiet: true,
-      });
-
-      expect(result.outputDir).toBe(testDir);
-      expect(fs.existsSync(markerPath)).toBe(false);
-    });
-
-    it('recovery: ambiguous (final absent, backup absent, staging present) preserves staging and throws', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdownload/onlycopy.txt`, 'staging only');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdownload/onlycopy.txt`)).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
+    it('keeps failed downloads visibly temporary and leaves the destination absent', async () => {
+      await expect(downloadSketch({ ...info, codeParts: [info.codeParts[0],
+        { title: 'bad.js', code: 42 }] }, options)).rejects.toThrow();
       expect(fs.existsSync(testDir)).toBe(false);
+      expect(artifacts()).toHaveLength(1);
     });
 
-    it('recovery: ambiguous (final present, backup present, staging present) preserves everything and throws', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
-      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
-      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdownload/newsketch.txt`, 'staging');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(testDir)).toBe(true);
-      expect(fs.existsSync(path.join(testDir, 'existing.txt'))).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdold-1234-0`)).toBe(true);
-      expect(fs.existsSync(`${testDir}.opdownload`)).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
+    it('skips existing destinations by default without touching local files', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      expect((await downloadSketch(info, options)).skipped).toBe(true);
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+      expect(artifacts()).toEqual([]);
     });
 
-    it('recovery: cleanup failure after restoring backup aborts as recovery_required', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
+    it('rejects merge instead of following existing symlinks', async () => {
+      fs.mkdirSync(testDir);
+      await expect(downloadSketch(info, { ...options, conflictPolicy: 'merge' })).rejects.toThrow(/policy/i);
+      expect(artifacts()).toEqual([]);
+    });
 
-      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
-      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdownload/newsketch.txt`, 'staging');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
+    it('preserves the old destination when replacement fails before promotion', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      await expect(downloadSketch({ ...info, codeParts: [{ title: 'bad.js', code: 42 }] },
+        { ...options, overwrite: true })).rejects.toThrow();
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+    });
 
-      // Backup restore (rename) succeeds, but the marker removal fails.
-      // Recovery must not report 'resolved' with the marker still present.
-      const originalRmSync = fs.rmSync.bind(fs);
-      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
-        if (target === markerPath) {
-          const error = new Error('EACCES: simulated permission denied');
-          error.code = 'EACCES';
-          throw error;
-        }
-        return originalRmSync(target, opts);
+    it('restores the backup when promotion fails', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      const rename = fs.renameSync;
+      const spy = vi.spyOn(fs, 'renameSync').mockImplementation((src, dest) => {
+        if (src.includes('.opdownload-')) throw new Error('promotion failed');
+        return rename(src, dest);
       });
-
-      let threwCorrectError = false;
       try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      } finally {
-        rmSpy.mockRestore();
-      }
-      expect(threwCorrectError).toBe(true);
-      // final was restored from backup by the rename, but recovery must still
-      // report failure since the marker cleanup did not complete.
-      expect(fs.existsSync(testDir)).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
+        await expect(downloadSketch(info, { ...options, overwrite: true })).rejects.toThrow(/promotion failed/);
+        expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+      } finally { spy.mockRestore(); }
     });
 
-    it('recovery: marker cleanup failure after backup removal aborts as recovery_required', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
-      fs.mkdirSync(`${testDir}.opdold-1234-0`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdold-1234-0/oldsketch.txt`, 'previous_download');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      // final present, backup present, staging absent -> recovery removes the
-      // backup then the marker. Make only the marker removal fail.
-      const originalRmSync = fs.rmSync.bind(fs);
-      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
-        if (target === markerPath) {
-          const error = new Error('EACCES: simulated permission denied');
-          error.code = 'EACCES';
-          throw error;
-        }
-        return originalRmSync(target, opts);
-      });
-
-      let threwCorrectError = false;
-      try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      } finally {
-        rmSpy.mockRestore();
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
+    it('replaces only after completion and cleans its own artifacts', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'old');
+      const result = await downloadSketch(info, { ...options, overwrite: true });
+      expect(fs.existsSync(path.join(testDir, 'local'))).toBe(false);
+      expect(fs.readFileSync(result.codeFiles[0], 'utf8')).toBe('complete');
+      expect(artifacts()).toEqual([]);
+      expect(fs.existsSync(`${testDir}.opdlock`)).toBe(false);
+      expect(fs.readdirSync(path.dirname(testDir))
+        .filter(name => name.startsWith(path.basename(testDir) + '.opdold-'))).toEqual([]);
     });
 
-    it('recovery: marker cleanup failure after stale-staging removal aborts as recovery_required', async () => {
-      const sketchInfo = {
-        sketchId: 1,
-        title: 'T',
-        author: 'A',
-        codeParts: [{ title: 'sketch.js', code: 'x' }],
-        files: [],
-        metadata: { mode: 'p5js' },
-      };
-
-      fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'existing.txt'), 'final');
-      fs.mkdirSync(`${testDir}.opdownload`, { recursive: true });
-      fs.writeFileSync(`${testDir}.opdownload/stale.txt`, 'stale staging');
-      const markerPath = `${testDir}.opdtxn`;
-      fs.writeFileSync(markerPath, JSON.stringify({
-        stagingDir: `${testDir}.opdownload`,
-        backupDir: `${testDir}.opdold-1234-0`,
-        finalDir: testDir,
-      }), 'utf8');
-
-      // final present, backup absent, staging present -> recovery removes
-      // staging then the marker. Make only the marker removal fail.
-      const originalRmSync = fs.rmSync.bind(fs);
-      const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, opts) => {
-        if (target === markerPath) {
-          const error = new Error('EACCES: simulated permission denied');
-          error.code = 'EACCES';
-          throw error;
-        }
-        return originalRmSync(target, opts);
+    it('reports and preserves the backup when restoration also fails', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      const rename = fs.renameSync;
+      const spy = vi.spyOn(fs, 'renameSync').mockImplementation((src, dest) => {
+        if (dest === testDir) throw new Error('rename blocked');
+        return rename(src, dest);
       });
-
-      let threwCorrectError = false;
       try {
-        await downloadSketch(sketchInfo, {
-          outputDir: testDir,
-          downloadAssets: false,
-          saveMetadata: false,
-          downloadThumbnail: false,
-          createLicenseFile: false,
-          createOpMetadata: false,
-          addSourceComments: false,
-          quiet: true,
-        });
-      } catch (error) {
-        threwCorrectError = error.code === 'recovery_required';
-      } finally {
-        rmSpy.mockRestore();
-      }
-      expect(threwCorrectError).toBe(true);
-      expect(fs.existsSync(markerPath)).toBe(true);
+        await expect(downloadSketch(info, { ...options, overwrite: true }))
+          .rejects.toThrow(/Previous download preserved at .*original; restore it manually/);
+        const backup = fs.readdirSync(path.dirname(testDir))
+          .find(name => name.startsWith(path.basename(testDir) + '.opdold-'));
+        expect(fs.readFileSync(path.join(path.dirname(testDir), backup, 'original', 'local'), 'utf8')).toBe('keep');
+        expect(artifacts()).toHaveLength(1);
+      } finally { spy.mockRestore(); }
+    });
+
+    it('preserves an existing promotion lock and destination', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      fs.mkdirSync(`${testDir}.opdlock`);
+      await expect(downloadSketch(info, { ...options, overwrite: true }))
+        .rejects.toThrow(/Promotion blocked/);
+      expect(fs.existsSync(`${testDir}.opdlock`)).toBe(true);
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+    });
+
+    it('allows cancelling without creating temporary files', async () => {
+      fs.mkdirSync(testDir);
+      const result = await downloadSketch(info, { ...options, onConflict: async () => 'cancel' });
+      expect(result.cancelled).toBe(true);
+      expect(artifacts()).toEqual([]);
+    });
+
+    it('does not mix overlapping downloads to a fresh destination', async () => {
+      const withAsset = code => ({ ...info, metadata: { mode: 'html', fileBase: 'https://assets.test/' },
+        codeParts: [{ title: 'main.js', code }], files: [{ name: 'asset.txt' }] });
+      nock('https://assets.test').get('/asset.txt').delay(50).reply(200, 'A');
+      nock('https://assets.test').get('/asset.txt').reply(200, 'B');
+      const results = await Promise.allSettled([
+        downloadSketch(withAsset('A'), options), downloadSketch(withAsset('B'), options),
+      ]);
+      expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+      const dir = path.join(testDir, 'sketch', 'main');
+      expect(fs.readFileSync(path.join(dir, 'main.js'), 'utf8'))
+        .toBe(fs.readFileSync(path.join(dir, 'asset.txt'), 'utf8'));
     });
   });
 });
