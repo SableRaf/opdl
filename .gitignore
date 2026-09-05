@@ -3,6 +3,10 @@ dist/
 coverage/
 *.log
 sketch_*
+*.opdownload
+*.opdownload-*
+*.opdold-*
+*.opdlock
 .DS_Store
 .vscode/
 .env

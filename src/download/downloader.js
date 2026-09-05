@@ -18,7 +18,79 @@ const { canonicalizeMode } = require('./sketchMode');
 
 const META_DIR = 'metadata';
 const SKETCH_DIR = 'sketch';
+const STAGING_SUFFIX = '.opdownload-';
 const THUMBNAIL_URL_TEMPLATE = 'https://kyoko.openprocessing.org/thumbnails/visualThumbnail{visualID}@2x.jpg';
+
+function pathExists(target) {
+  try { fs.lstatSync(target); return true; }
+  catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+}
+
+function resolveFinalDirAndPolicy(outputDir, options = {}) {
+  const finalDir = path.resolve(outputDir);
+  let policy = null;
+  if (!pathExists(finalDir)) {
+    policy = 'fresh';
+  } else if (options.conflictPolicy) {
+    policy = options.conflictPolicy;
+  } else if (options.overwrite) {
+    policy = 'replace';
+  } else if (options.skipExisting) {
+    policy = 'skip';
+  }
+  return { finalDir, policy };
+}
+
+// Only promotion is locked. Downloads use independent staging directories and
+// never touch another run's files. A crash during promotion leaves the lock for
+// manual inspection; there is deliberately no automatic recovery protocol.
+function promoteStagingDir(stagingDir, finalDir, policy, quiet) {
+  const lockDir = `${finalDir}.opdlock`;
+  try {
+    fs.mkdirSync(lockDir);
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      throw new Error(`Promotion blocked by ${lockDir}. If no download is running, inspect ${finalDir} and its .opdold-* backups, then remove the lock directory to retry.`);
+    }
+    throw error;
+  }
+  try {
+    if (!pathExists(finalDir)) {
+      fs.renameSync(stagingDir, finalDir);
+      return;
+    }
+    if (policy !== 'replace') {
+      throw new Error(`Destination appeared during download: ${finalDir}. Retry with --overwrite to replace it.`);
+    }
+    const backupDir = fs.mkdtempSync(`${finalDir}.opdold-`);
+    const original = path.join(backupDir, 'original');
+    fs.renameSync(finalDir, original);
+    try {
+      fs.renameSync(stagingDir, finalDir);
+    } catch (error) {
+      try {
+        if (pathExists(finalDir)) throw new Error('destination already exists');
+        fs.renameSync(original, finalDir);
+      } catch (restoreError) {
+        throw new Error(`Promotion failed: ${error.message}. Previous download preserved at ${original}; restore it manually (${restoreError.message}).`);
+      }
+      try { fs.rmdirSync(backupDir); }
+      catch (cleanupError) {
+        if (!quiet) console.warn(`opdl: empty backup directory remains at ${backupDir}: ${cleanupError.message}`);
+      }
+      throw error;
+    }
+    try { fs.rmSync(backupDir, { recursive: true, force: true }); }
+    catch (error) {
+      if (!quiet) console.warn(`opdl: download completed, but backup remains at ${original}: ${error.message}`);
+    }
+  } finally {
+    try { fs.rmdirSync(lockDir); }
+    catch (error) {
+      if (!quiet) console.warn(`opdl: could not remove promotion lock ${lockDir}: ${error.message}`);
+    }
+  }
+}
 
 /**
  * Resolve the final filename list for all code parts in one pass, before
@@ -131,213 +203,268 @@ async function planAssetFileNames({ files, reservedCodeNames, onFilenameConflict
 const downloadSketch = async (sketchInfo, options = {}) => {
   const finalOptions = { ...options };
   const sketchId = sketchInfo.sketchId;
-  const outputDir = finalOptions.outputDir
+  const outputDirInput = finalOptions.outputDir
     ? path.resolve(finalOptions.outputDir)
     : path.resolve(`sketch_${sketchId}`);
 
-  ensureDirectoryExists(outputDir);
-  const shouldAddSourceComments = finalOptions.addSourceComments;
-  const onFilenameConflict = finalOptions.onFilenameConflict || promptFilenameConflictAction;
+  const { finalDir, policy: resolvedPolicy } = resolveFinalDirAndPolicy(outputDirInput, finalOptions);
 
-  const isPjs = canonicalizeMode(sketchInfo.metadata?.mode) === 'pjs';
-  const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
-
-  const resolverOptions = isPjs
-    ? { fallbackBase: 'sketch', defaultExtension: '.pde', indexedFallback: false }
-    : { fallbackBase: 'part', defaultExtension: '.js', indexedFallback: true };
-  const resolvedFileNames = resolvePrepassFileNames(codeParts, resolverOptions);
-  const { sketchName } = pickSketchName(resolvedFileNames, isPjs);
-  const sketchDir = path.join(outputDir, SKETCH_DIR, sketchName);
-  ensureDirectoryExists(sketchDir);
-
-  const runtimeFiles = [];
-  const savedCodeFiles = [];
-  const sanitizedCodeParts = [];
-  const rootUsedNames = new Set();
-
-  const files = Array.isArray(sketchInfo.files) ? sketchInfo.files : [];
-  const assetBaseUrl = sketchInfo.metadata?.fileBase;
-  const shouldDownloadAssets = finalOptions.downloadAssets !== false;
-
-  // Resolve the FINAL on-disk asset names — including any collision renames —
-  // before writing code, so the reference-rewrite map points at the names the
-  // files actually land under (a later keep-both rename must not leave code
-  // pointing at the pre-collision name, which would 404 or hit the code
-  // object it collided with). The prepass reserves the code filenames first
-  // (replaying resolvedFileNames against a temporary Set exactly as the write
-  // loop will), so asset-vs-code collisions are detected here identically.
-  const assetPlan = shouldDownloadAssets && files.length
-    ? await planAssetFileNames({
-      files,
-      reservedCodeNames: resolvedFileNames,
-      onFilenameConflict,
+  let policy = resolvedPolicy;
+  if (!policy) {
+    const { promptConflictAction } = require('./conflictPrompt');
+    const onConflict = finalOptions.onConflict || promptConflictAction;
+    const action = await onConflict({
+      title: sketchInfo.title || `Sketch ${sketchId}`,
+      single: true,
+      outputDir: finalDir,
       quiet: finalOptions.quiet,
-    })
-    : [];
-
-  // Assets are saved under sanitized (and possibly deduped) names; rewrite code
-  // references to match so loadImage/loadSound don't 404 into the dev server's
-  // HTML fallback.
-  const assetRenames = assetPlan
-    .filter((entry) => entry.assetFileName && entry.assetFileName !== entry.filename)
-    .map((entry) => ({ original: entry.filename, sanitized: entry.assetFileName }));
-
-  for (let index = 0; index < codeParts.length; index += 1) {
-    const { codeFilePath, codeFileName, sanitizedCodeBlock } = writeCodeFile({
-      outputDir: sketchDir,
-      codeBlock: codeParts[index],
-      index,
-      sketchInfo,
-      addSourceComments: shouldAddSourceComments,
-      fallbackBase: resolverOptions.fallbackBase,
-      defaultExtension: resolverOptions.defaultExtension,
-      resolvedFileName: resolvedFileNames[index],
-      usedNames: rootUsedNames,
-      assetRenames,
+      isInteractive: finalOptions.isInteractive,
+      promptFn: finalOptions.promptFn,
     });
-    savedCodeFiles.push(codeFilePath);
-    sanitizedCodeParts.push(sanitizedCodeBlock);
-    runtimeFiles.push(codeFileName);
+    if (action === 'skip') {
+      return { skipped: true, outputDir: finalDir };
+    }
+    if (action === 'cancel') {
+      return { cancelled: true, outputDir: finalDir };
+    }
+    policy = action;
   }
 
-  if (shouldDownloadAssets && files.length) {
-    if (!assetBaseUrl) {
-      if (!finalOptions.quiet) {
-        console.warn('opdl: metadata.fileBase missing, cannot download assets');
-      }
-    } else {
-      for (const entry of assetPlan) {
-        const { filename, assetFileName } = entry;
-        if (!filename) {
-          if (!finalOptions.quiet) {
-            console.warn('opdl: asset entry missing name, skipping');
-          }
-          continue;
-        }
-        if (!assetFileName) {
-          // Resolved to 'skip-upload' during the prepass.
-          continue;
-        }
-        rootUsedNames.add(assetFileName);
+  if (policy === 'skip') {
+    return { skipped: true, outputDir: finalDir };
+  }
+  if (policy === 'cancel') {
+    return { cancelled: true, outputDir: finalDir };
+  }
 
-        const assetUrl = resolveAssetUrl(assetBaseUrl, filename);
-        if (!assetUrl) {
-          if (!finalOptions.quiet) {
-            console.warn(`opdl: failed to resolve asset URL for ${filename}`);
-          }
-          continue;
-        }
+  if (!['fresh', 'replace'].includes(policy)) {
+    throw new Error(`Unsupported conflict policy: ${policy}`);
+  }
+  const cwd = path.resolve(process.cwd());
+  if (finalDir === cwd || cwd.startsWith(finalDir + path.sep) || path.dirname(finalDir) === finalDir) {
+    throw new Error(`opdl: --outputDir cannot be the current directory, an ancestor of it, or the filesystem root (${finalDir}). Use a subdirectory, e.g. --outputDir ./sketch.`);
+  }
 
-        try {
-          if (finalOptions.verbose) {
-            console.log(`opdl: downloading asset ${filename} from ${assetUrl}`);
+  ensureDirectoryExists(path.dirname(finalDir));
+  const stagingDir = fs.mkdtempSync(`${finalDir}${STAGING_SUFFIX}`);
+  let promoted = false;
+  try {
+    const outputDir = stagingDir;
+    const shouldAddSourceComments = finalOptions.addSourceComments;
+    const onFilenameConflict = finalOptions.onFilenameConflict || promptFilenameConflictAction;
+
+    const isPjs = canonicalizeMode(sketchInfo.metadata?.mode) === 'pjs';
+    const codeParts = Array.isArray(sketchInfo.codeParts) ? sketchInfo.codeParts : [];
+
+    const resolverOptions = isPjs
+      ? { fallbackBase: 'sketch', defaultExtension: '.pde', indexedFallback: false }
+      : { fallbackBase: 'part', defaultExtension: '.js', indexedFallback: true };
+    const resolvedFileNames = resolvePrepassFileNames(codeParts, resolverOptions);
+    const { sketchName } = pickSketchName(resolvedFileNames, isPjs);
+    const sketchDir = path.join(outputDir, SKETCH_DIR, sketchName);
+    ensureDirectoryExists(sketchDir);
+
+    const runtimeFiles = [];
+    const savedCodeFiles = [];
+    const sanitizedCodeParts = [];
+    const rootUsedNames = new Set();
+
+    const files = Array.isArray(sketchInfo.files) ? sketchInfo.files : [];
+    const assetBaseUrl = sketchInfo.metadata?.fileBase;
+    const shouldDownloadAssets = finalOptions.downloadAssets !== false;
+
+    // Resolve the FINAL on-disk asset names — including any collision renames —
+    // before writing code, so the reference-rewrite map points at the names the
+    // files actually land under (a later keep-both rename must not leave code
+    // pointing at the pre-collision name, which would 404 or hit the code
+    // object it collided with). The prepass reserves the code filenames first
+    // (replaying resolvedFileNames against a temporary Set exactly as the write
+    // loop will), so asset-vs-code collisions are detected here identically.
+    const assetPlan = shouldDownloadAssets && files.length
+      ? await planAssetFileNames({
+        files,
+        reservedCodeNames: resolvedFileNames,
+        onFilenameConflict,
+        quiet: finalOptions.quiet,
+      })
+      : [];
+
+    // Assets are saved under sanitized (and possibly deduped) names; rewrite code
+    // references to match so loadImage/loadSound don't 404 into the dev server's
+    // HTML fallback.
+    const assetRenames = assetPlan
+      .filter((entry) => entry.assetFileName && entry.assetFileName !== entry.filename)
+      .map((entry) => ({ original: entry.filename, sanitized: entry.assetFileName }));
+
+    for (let index = 0; index < codeParts.length; index += 1) {
+      const { codeFilePath, codeFileName, sanitizedCodeBlock } = writeCodeFile({
+        outputDir: sketchDir,
+        codeBlock: codeParts[index],
+        index,
+        sketchInfo,
+        addSourceComments: shouldAddSourceComments,
+        fallbackBase: resolverOptions.fallbackBase,
+        defaultExtension: resolverOptions.defaultExtension,
+        resolvedFileName: resolvedFileNames[index],
+        usedNames: rootUsedNames,
+        assetRenames,
+      });
+      savedCodeFiles.push(codeFilePath);
+      sanitizedCodeParts.push(sanitizedCodeBlock);
+      runtimeFiles.push(codeFileName);
+    }
+
+    if (shouldDownloadAssets && files.length) {
+      if (!assetBaseUrl) {
+        if (!finalOptions.quiet) {
+          console.warn('opdl: metadata.fileBase missing, cannot download assets');
+        }
+      } else {
+        for (const entry of assetPlan) {
+          const { filename, assetFileName } = entry;
+          if (!filename) {
+            if (!finalOptions.quiet) {
+              console.warn('opdl: asset entry missing name, skipping');
+            }
+            continue;
           }
-          const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-          const assetFilePath = path.join(sketchDir, assetFileName);
-          fs.writeFileSync(assetFilePath, response.data);
-          runtimeFiles.push(assetFileName);
-        } catch (error) {
-          if (!finalOptions.quiet) {
-            console.warn(`opdl: failed to download asset ${filename}`);
+          if (!assetFileName) {
+            // Resolved to 'skip-upload' during the prepass.
+            continue;
+          }
+          rootUsedNames.add(assetFileName);
+
+          const assetUrl = resolveAssetUrl(assetBaseUrl, filename);
+          if (!assetUrl) {
+            if (!finalOptions.quiet) {
+              console.warn(`opdl: failed to resolve asset URL for ${filename}`);
+            }
+            continue;
+          }
+
+          try {
             if (finalOptions.verbose) {
-              console.warn(`  URL: ${assetUrl}`);
-              console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
-              console.warn(`  Error: ${error.message}`);
+              console.log(`opdl: downloading asset ${filename} from ${assetUrl}`);
+            }
+            const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+            const assetFilePath = path.join(sketchDir, assetFileName);
+            fs.writeFileSync(assetFilePath, response.data);
+            runtimeFiles.push(assetFileName);
+          } catch (error) {
+            if (!finalOptions.quiet) {
+              console.warn(`opdl: failed to download asset ${filename}`);
+              if (finalOptions.verbose) {
+                console.warn(`  URL: ${assetUrl}`);
+                console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
+                console.warn(`  Error: ${error.message}`);
+              }
             }
           }
         }
       }
     }
-  }
 
-  const metadataDir = path.join(outputDir, META_DIR);
-  ensureDirectoryExists(metadataDir);
+    const metadataDir = path.join(outputDir, META_DIR);
+    ensureDirectoryExists(metadataDir);
 
-  if (finalOptions.saveMetadata) {
-    const metadataFilePath = path.join(metadataDir, 'metadata.json');
-    const savedMetadata = { ...(sketchInfo.metadata || {}) };
-    // The sketch endpoint does not include the resolved author name. Keep it
-    // with the sketch so offline consumers do not need a second global index.
-    if (!savedMetadata.author && sketchInfo.author) savedMetadata.author = sketchInfo.author;
-    fs.writeFileSync(metadataFilePath, JSON.stringify(savedMetadata, null, 2), 'utf8');
-  }
+    if (finalOptions.saveMetadata) {
+      const metadataFilePath = path.join(metadataDir, 'metadata.json');
+      const savedMetadata = { ...(sketchInfo.metadata || {}) };
+      // The sketch endpoint does not include the resolved author name. Keep it
+      // with the sketch so offline consumers do not need a second global index.
+      if (!savedMetadata.author && sketchInfo.author) savedMetadata.author = sketchInfo.author;
+      fs.writeFileSync(metadataFilePath, JSON.stringify(savedMetadata, null, 2), 'utf8');
+    }
 
-  if (finalOptions.downloadThumbnail && sketchInfo.metadata?.visualID) {
-    const thumbnailUrl = THUMBNAIL_URL_TEMPLATE.replace('{visualID}', sketchInfo.metadata.visualID);
-    try {
-      if (finalOptions.verbose) {
-        console.log(`opdl: downloading thumbnail from ${thumbnailUrl}`);
-      }
-      const response = await axios.get(thumbnailUrl, { responseType: 'arraybuffer' });
-      const thumbnailPath = path.join(metadataDir, 'thumbnail.jpg');
-      fs.writeFileSync(thumbnailPath, response.data);
-    } catch (error) {
-      if (!finalOptions.quiet) {
-        console.warn('opdl: unable to download thumbnail');
+    if (finalOptions.downloadThumbnail && sketchInfo.metadata?.visualID) {
+      const thumbnailUrl = THUMBNAIL_URL_TEMPLATE.replace('{visualID}', sketchInfo.metadata.visualID);
+      try {
         if (finalOptions.verbose) {
-          console.warn(`  URL: ${thumbnailUrl}`);
-          console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
-          console.warn(`  Error: ${error.message}`);
+          console.log(`opdl: downloading thumbnail from ${thumbnailUrl}`);
+        }
+        const response = await axios.get(thumbnailUrl, { responseType: 'arraybuffer' });
+        const thumbnailPath = path.join(metadataDir, 'thumbnail.jpg');
+        fs.writeFileSync(thumbnailPath, response.data);
+      } catch (error) {
+        if (!finalOptions.quiet) {
+          console.warn('opdl: unable to download thumbnail');
+          if (finalOptions.verbose) {
+            console.warn(`  URL: ${thumbnailUrl}`);
+            console.warn(`  Status: ${error.response?.status ?? 'no response'}`);
+            console.warn(`  Error: ${error.message}`);
+          }
+        }
+      }
+    } else if (finalOptions.downloadThumbnail && finalOptions.verbose) {
+      console.log('opdl: skipping thumbnail — no visualID in metadata');
+    }
+
+    if (sketchInfo.metadata?.mode && sketchInfo.metadata.mode !== 'html') {
+      generateIndexHtml(sketchInfo.metadata, sanitizedCodeParts, sketchDir);
+    }
+    const generatedStyleCssPath = path.join(sketchDir, 'style.css');
+    if (fs.existsSync(generatedStyleCssPath) && !runtimeFiles.includes('style.css')) {
+      runtimeFiles.push('style.css');
+    }
+    if (fs.existsSync(path.join(sketchDir, 'index.html')) && !runtimeFiles.includes('index.html')) {
+      // Tracked for completeness; the Vite scaffolder excludes index.html from
+      // its copy allowlist (Vite owns it) regardless of this list's contents.
+      runtimeFiles.push('index.html');
+    }
+
+    if (finalOptions.createLicenseFile) {
+      createLicenseFile(sketchInfo, outputDir, finalOptions);
+    }
+
+    if (finalOptions.createOpMetadata) {
+      createOpMetadata(sketchInfo, outputDir, finalOptions);
+    }
+
+    if (sketchInfo.tutorial) {
+      try {
+        writeTutorial(sketchInfo.tutorial, outputDir, sketchInfo, finalOptions);
+      } catch (error) {
+        if (!finalOptions.quiet) {
+          console.warn(`opdl: failed to write tutorial bundle: ${error.message}`);
         }
       }
     }
-  } else if (finalOptions.downloadThumbnail && finalOptions.verbose) {
-    console.log('opdl: skipping thumbnail — no visualID in metadata');
-  }
 
-  if (sketchInfo.metadata?.mode && sketchInfo.metadata.mode !== 'html') {
-    generateIndexHtml(sketchInfo.metadata, sanitizedCodeParts, sketchDir);
-  }
-  const generatedStyleCssPath = path.join(sketchDir, 'style.css');
-  if (fs.existsSync(generatedStyleCssPath) && !runtimeFiles.includes('style.css')) {
-    runtimeFiles.push('style.css');
-  }
-  if (fs.existsSync(path.join(sketchDir, 'index.html')) && !runtimeFiles.includes('index.html')) {
-    // Tracked for completeness; the Vite scaffolder excludes index.html from
-    // its copy allowlist (Vite owns it) regardless of this list's contents.
-    runtimeFiles.push('index.html');
-  }
+    promoteStagingDir(stagingDir, finalDir, policy, finalOptions.quiet);
+    promoted = true;
 
-  if (finalOptions.createLicenseFile) {
-    createLicenseFile(sketchInfo, outputDir, finalOptions);
-  }
+    const finalMetadataDir = path.join(finalDir, META_DIR);
+    const finalSketchDir = path.join(finalDir, SKETCH_DIR, sketchName);
+    const finalCodeFiles = savedCodeFiles.map((p) => path.join(finalDir, path.relative(stagingDir, p)));
 
-  if (finalOptions.createOpMetadata) {
-    createOpMetadata(sketchInfo, outputDir, finalOptions);
-  }
-
-  if (sketchInfo.tutorial) {
-    try {
-      writeTutorial(sketchInfo.tutorial, outputDir, sketchInfo, finalOptions);
-    } catch (error) {
+    // Set up Vite project if requested
+    if (finalOptions.vite) {
+      const { scaffoldViteProject } = require('./viteScaffolder');
+      await scaffoldViteProject(finalSketchDir, sketchInfo, {
+        codeFiles: finalCodeFiles,
+        runtimeFiles,
+        quiet: finalOptions.quiet,
+        run: finalOptions.run,
+      });
+    } else if (finalOptions.run) {
+      // Print success message before starting server (since server will block)
       if (!finalOptions.quiet) {
-        console.warn(`opdl: failed to write tutorial bundle: ${error.message}`);
+        console.log(`Sketch downloaded to: ${finalDir}`);
       }
+      // Run simple HTTP server for non-Vite projects
+      const { runDevServer } = require('./serverRunner');
+      await runDevServer(finalSketchDir, { vite: false, quiet: finalOptions.quiet });
     }
-  }
 
-  // Set up Vite project if requested
-  if (finalOptions.vite) {
-    const { scaffoldViteProject } = require('./viteScaffolder');
-    await scaffoldViteProject(sketchDir, sketchInfo, {
-      codeFiles: savedCodeFiles,
-      runtimeFiles,
-      quiet: finalOptions.quiet,
-      run: finalOptions.run,
-    });
-  } else if (finalOptions.run) {
-    // Print success message before starting server (since server will block)
-    if (!finalOptions.quiet) {
-      console.log(`Sketch downloaded to: ${outputDir}`);
+    return {
+      outputDir: finalDir, metadataDir: finalMetadataDir, sketchDir: finalSketchDir, sketchName, codeFiles: finalCodeFiles,
+    };
+  } catch (error) {
+    if (!promoted) {
+      error.message += ` Incomplete download retained at ${stagingDir}; inspect or delete it as needed.`;
     }
-    // Run simple HTTP server for non-Vite projects
-    const { runDevServer } = require('./serverRunner');
-    await runDevServer(sketchDir, { vite: false, quiet: finalOptions.quiet });
+    throw error;
   }
-
-  return {
-    outputDir, metadataDir, sketchDir, sketchName, codeFiles: savedCodeFiles,
-  };
 };
 
 module.exports = { downloadSketch };

@@ -7,18 +7,36 @@ import opdl from '../src/index.js';
 describe('opdl (integration)', () => {
   const testDir = path.join(__dirname, 'tmp');
 
-  beforeEach(() => {
-    nock.cleanAll();
+  function cleanupTestArtifacts() {
+    const baseDir = path.dirname(testDir);
+    const baseName = path.basename(testDir);
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
+    if (fs.existsSync(`${testDir}.opdownload`)) {
+      fs.rmSync(`${testDir}.opdownload`, { recursive: true, force: true });
+    }
+    // Clean up any backup dirs
+    try {
+      const entries = fs.readdirSync(baseDir);
+      for (const entry of entries) {
+        if (entry.startsWith(`${baseName}.opdold-`)) {
+          fs.rmSync(path.join(baseDir, entry), { recursive: true, force: true });
+        }
+      }
+    } catch (e) {
+      // ignore if baseDir doesn't exist
+    }
+  }
+
+  beforeEach(() => {
+    nock.cleanAll();
+    cleanupTestArtifacts();
   });
 
   afterEach(() => {
     nock.cleanAll();
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    cleanupTestArtifacts();
   });
 
   it('should return error for invalid sketch ID', async () => {

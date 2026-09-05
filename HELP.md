@@ -460,6 +460,30 @@ opdl curation sketches 12 --sort asc
 
 Options specific to sketch download operations.
 
+Downloads are written to a unique sibling `<outputDir>.opdownload-*` directory.
+Only after the download finishes is that directory renamed to the destination.
+An interrupted or failed download therefore remains visibly temporary; unfinished
+folders are never resumed or removed automatically. You can inspect or delete them
+and retry. Reported failures include the temporary directory path.
+
+Existing destinations are skipped in non-interactive or quiet sessions unless
+`--overwrite` is supplied. Interactive sessions offer replace, skip, or cancel.
+There is no merge operation. Replacement keeps the existing destination intact
+until the new download is ready, then temporarily moves it to
+`<outputDir>.opdold-*/original`. If promotion fails, opdl attempts to restore it;
+if restoration also fails, the error reports the backup path for manual restoration.
+
+A short-lived `<outputDir>.opdlock` directory prevents simultaneous promotions.
+If the process stops during promotion, inspect the destination and backup first.
+Once no download is running, restore the backup if needed and remove the lock
+directory before retrying. Leftover backups are never automatically restored or
+removed by a later run.
+
+Individual asset and thumbnail failures remain non-fatal warnings, so a completed
+sketch may omit unavailable optional resources. Optional Vite scaffolding,
+dependency installation, and server startup happen after promotion and are not
+covered by staging.
+
 #### `--outputDir <path>`
 
 Specify the output directory for downloaded files. Defaults to `sketch_<id>` in the current directory.

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import nock from 'nock';
@@ -7,18 +7,36 @@ import { downloadSketch } from '../../src/download/downloader';
 describe('downloader', () => {
   const testDir = path.join(__dirname, 'test-download-output');
 
-  beforeEach(() => {
-    nock.cleanAll();
+  function cleanupTestArtifacts() {
+    const baseDir = path.dirname(testDir);
+    const baseName = path.basename(testDir);
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
+    if (fs.existsSync(`${testDir}.opdownload`)) {
+      fs.rmSync(`${testDir}.opdownload`, { recursive: true, force: true });
+    }
+    // Clean up any backup dirs
+    try {
+      const entries = fs.readdirSync(baseDir);
+      for (const entry of entries) {
+        if (entry.startsWith(`${baseName}.opdold-`) || entry.startsWith(`${baseName}.opdownload-`) || entry === `${baseName}.opdlock`) {
+          fs.rmSync(path.join(baseDir, entry), { recursive: true, force: true });
+        }
+      }
+    } catch (e) {
+      // ignore if baseDir doesn't exist
+    }
+  }
+
+  beforeEach(() => {
+    nock.cleanAll();
+    cleanupTestArtifacts();
   });
 
   afterEach(() => {
     nock.cleanAll();
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    cleanupTestArtifacts();
   });
 
   describe('downloadSketch', () => {
@@ -1126,6 +1144,127 @@ describe('downloader', () => {
         sketchName: 'sketch',
       });
       expect(Array.isArray(result.codeFiles)).toBe(true);
+    });
+  });
+
+  describe('staging and promotion', () => {
+    const info = { sketchId: 1, metadata: { mode: 'html' }, files: [],
+      codeParts: [{ title: 'main.js', code: 'complete' }] };
+    const options = { outputDir: testDir, quiet: true };
+    const artifacts = () => fs.readdirSync(path.dirname(testDir))
+      .filter(name => name.startsWith(path.basename(testDir) + '.opdownload-'));
+
+    it('leaves unrelated unfinished downloads untouched', async () => {
+      const leftover = `${testDir}.opdownload-old`;
+      fs.mkdirSync(leftover);
+      fs.writeFileSync(path.join(leftover, 'partial'), 'unfinished');
+      await downloadSketch(info, options);
+      expect(fs.readFileSync(path.join(leftover, 'partial'), 'utf8')).toBe('unfinished');
+      expect(artifacts()).toEqual([path.basename(leftover)]);
+    });
+
+    it('keeps failed downloads visibly temporary and leaves the destination absent', async () => {
+      await expect(downloadSketch({ ...info, codeParts: [info.codeParts[0],
+        { title: 'bad.js', code: 42 }] }, options)).rejects.toThrow();
+      expect(fs.existsSync(testDir)).toBe(false);
+      expect(artifacts()).toHaveLength(1);
+    });
+
+    it('skips existing destinations by default without touching local files', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      expect((await downloadSketch(info, options)).skipped).toBe(true);
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+      expect(artifacts()).toEqual([]);
+    });
+
+    it('rejects merge instead of following existing symlinks', async () => {
+      fs.mkdirSync(testDir);
+      await expect(downloadSketch(info, { ...options, conflictPolicy: 'merge' })).rejects.toThrow(/policy/i);
+      expect(artifacts()).toEqual([]);
+    });
+
+    it('preserves the old destination when replacement fails before promotion', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      await expect(downloadSketch({ ...info, codeParts: [{ title: 'bad.js', code: 42 }] },
+        { ...options, overwrite: true })).rejects.toThrow();
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+    });
+
+    it('restores the backup when promotion fails', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      const rename = fs.renameSync;
+      const spy = vi.spyOn(fs, 'renameSync').mockImplementation((src, dest) => {
+        if (src.includes('.opdownload-')) throw new Error('promotion failed');
+        return rename(src, dest);
+      });
+      try {
+        await expect(downloadSketch(info, { ...options, overwrite: true })).rejects.toThrow(/promotion failed/);
+        expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+      } finally { spy.mockRestore(); }
+    });
+
+    it('replaces only after completion and cleans its own artifacts', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'old');
+      const result = await downloadSketch(info, { ...options, overwrite: true });
+      expect(fs.existsSync(path.join(testDir, 'local'))).toBe(false);
+      expect(fs.readFileSync(result.codeFiles[0], 'utf8')).toBe('complete');
+      expect(artifacts()).toEqual([]);
+      expect(fs.existsSync(`${testDir}.opdlock`)).toBe(false);
+      expect(fs.readdirSync(path.dirname(testDir))
+        .filter(name => name.startsWith(path.basename(testDir) + '.opdold-'))).toEqual([]);
+    });
+
+    it('reports and preserves the backup when restoration also fails', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      const rename = fs.renameSync;
+      const spy = vi.spyOn(fs, 'renameSync').mockImplementation((src, dest) => {
+        if (dest === testDir) throw new Error('rename blocked');
+        return rename(src, dest);
+      });
+      try {
+        await expect(downloadSketch(info, { ...options, overwrite: true }))
+          .rejects.toThrow(/Previous download preserved at .*original; restore it manually/);
+        const backup = fs.readdirSync(path.dirname(testDir))
+          .find(name => name.startsWith(path.basename(testDir) + '.opdold-'));
+        expect(fs.readFileSync(path.join(path.dirname(testDir), backup, 'original', 'local'), 'utf8')).toBe('keep');
+        expect(artifacts()).toHaveLength(1);
+      } finally { spy.mockRestore(); }
+    });
+
+    it('preserves an existing promotion lock and destination', async () => {
+      fs.mkdirSync(testDir);
+      fs.writeFileSync(path.join(testDir, 'local'), 'keep');
+      fs.mkdirSync(`${testDir}.opdlock`);
+      await expect(downloadSketch(info, { ...options, overwrite: true }))
+        .rejects.toThrow(/Promotion blocked/);
+      expect(fs.existsSync(`${testDir}.opdlock`)).toBe(true);
+      expect(fs.readFileSync(path.join(testDir, 'local'), 'utf8')).toBe('keep');
+    });
+
+    it('allows cancelling without creating temporary files', async () => {
+      fs.mkdirSync(testDir);
+      const result = await downloadSketch(info, { ...options, onConflict: async () => 'cancel' });
+      expect(result.cancelled).toBe(true);
+      expect(artifacts()).toEqual([]);
+    });
+
+    it('does not mix overlapping downloads to a fresh destination', async () => {
+      const withAsset = code => ({ ...info, metadata: { mode: 'html', fileBase: 'https://assets.test/' },
+        codeParts: [{ title: 'main.js', code }], files: [{ name: 'asset.txt' }] });
+      nock('https://assets.test').get('/asset.txt').delay(50).reply(200, 'A');
+      nock('https://assets.test').get('/asset.txt').reply(200, 'B');
+      const results = await Promise.allSettled([
+        downloadSketch(withAsset('A'), options), downloadSketch(withAsset('B'), options),
+      ]);
+      expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+      const dir = path.join(testDir, 'sketch', 'main');
+      expect(fs.readFileSync(path.join(dir, 'main.js'), 'utf8'))
+        .toBe(fs.readFileSync(path.join(dir, 'asset.txt'), 'utf8'));
     });
   });
 });
