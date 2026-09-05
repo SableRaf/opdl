@@ -179,11 +179,43 @@ function isP5V2(url = "") {
   return match && Number(match[1]) >= 2;
 }
 
+// Presentation belongs to the gallery: exported sketches keep their original
+// drawing dimensions and source. Parent-page CSS cannot cross the iframe boundary.
+function applySketchPresentation(sketchDocument) {
+  if (!sketchDocument?.head || sketchDocument.getElementById("gallery-presentation")) return;
+
+  const style = sketchDocument.createElement("style");
+  style.id = "gallery-presentation";
+  style.textContent = `
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* p5 may put its canvas in <main> or an author-supplied container.
+       Direct canvases also cover sketches using other rendering engines.
+       CSS applies to late-created/replaced canvases and follows viewport and
+       canvas resizes without changing the drawing buffer or pixel density. */
+    canvas.p5Canvas, body > canvas, body > main > canvas {
+      position: fixed !important;
+      left: 50% !important;
+      top: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      margin: 0 !important;
+      translate: -50% -50% !important;
+    }
+  `;
+  sketchDocument.head.append(style);
+}
+
 function whenSketchReady(iframe, engineURL) {
   return new Promise((resolve) => {
     let done = false;
     const finish = () => {
       if (done) return;
+      applySketchPresentation(iframe.contentDocument);
       done = true;
       clearInterval(poll);
       clearTimeout(timeout);
@@ -192,6 +224,7 @@ function whenSketchReady(iframe, engineURL) {
     iframe.addEventListener(
       "load",
       () => {
+        applySketchPresentation(iframe.contentDocument);
         if (!isP5V2(engineURL)) finish();
       },
       { once: true },
