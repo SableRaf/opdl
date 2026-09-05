@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -14,6 +14,9 @@ describe('scaffoldGalleryProject', () => {
       const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
       const js = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
       expect(() => execFileSync(process.execPath, ['--check', path.join(root, 'main.js')])).not.toThrow();
+      const config = fs.readFileSync(path.join(root, 'vite.config.js'), 'utf8');
+      const options = new Function('defineConfig', config.replace(/^import .*$/m, '').replace('export default', 'return'))(value => value);
+      expect(options.build.target).toBe('es2022');
       expect(html).toContain('slideshow-view'); expect(html).toContain('sidebar'); expect(html).toContain('slide-pill');
       expect(js).toContain('/metadata/metadata.json');
       expect(js).toContain('metadata.titleOverride');
@@ -68,4 +71,52 @@ describe('scaffoldGalleryProject', () => {
       fs.rmSync(templates, { recursive: true, force: true });
     }
   });
+});
+
+// Exercise the generated readiness path, not just the presence of CSS text.
+describe('generated gallery presentation', () => {
+  it.each(['https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.js', 'https://cdn.jsdelivr.net/npm/p5@2.0.0/lib/p5.js'])(
+    'installs presentation before revealing %s and only once per document', async (engineURL) => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opdl-gallery-'));
+      vi.useFakeTimers();
+      try {
+        await scaffoldGalleryProject(root, { quiet: true });
+        const js = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+        const functions = ['applySketchPresentation', 'isP5V2', 'whenSketchReady'].map(name => {
+          const match = js.match(new RegExp(`function ${name}\\([^]*?\\n}`));
+          expect(match, `${name} must be emitted in the gallery`).toBeTruthy();
+          return match[0];
+        }).join('\n');
+        const ready = new Function(`${functions}\nreturn whenSketchReady;`)();
+        const styles = [];
+        const document = {
+          head: { append: style => styles.push(style) },
+          createElement: () => ({}),
+          getElementById: id => styles.find(style => style.id === id),
+        };
+        let onLoad;
+        const iframe = {
+          contentDocument: document,
+          contentWindow: { __p5SetupComplete: true },
+          addEventListener: (event, handler) => { onLoad = handler; },
+        };
+        const revealed = vi.fn();
+        const pending = ready(iframe, engineURL).then(revealed);
+        if (engineURL.includes('@1.')) onLoad();
+        else await vi.advanceTimersByTimeAsync(100);
+        expect(revealed).not.toHaveBeenCalled();
+        expect(styles).toHaveLength(1);
+        expect(styles[0].textContent).toContain('canvas.p5Canvas');
+        expect(styles[0].textContent).toContain('translate: -50% -50%');
+        await vi.advanceTimersByTimeAsync(150);
+        await pending;
+        expect(revealed).toHaveBeenCalledOnce();
+        onLoad(); // p5 v2 may become ready before the document's load event.
+        expect(styles).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
 });

@@ -315,6 +315,8 @@ export default defineConfig({
     open: true,
   },
   build: {
+    // Support top-level await in all bundled modules (including future additions).
+    target: 'es2022',
     outDir: 'dist',
     assetsDir: 'assets',
   },
